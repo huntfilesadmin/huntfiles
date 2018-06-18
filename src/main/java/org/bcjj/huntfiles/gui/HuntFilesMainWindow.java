@@ -2,6 +2,7 @@ package org.bcjj.huntfiles.gui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.EventQueue;
@@ -32,6 +33,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.StringTokenizer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
@@ -40,6 +42,7 @@ import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -49,6 +52,7 @@ import javax.swing.JTextField;
 import javax.swing.border.LineBorder;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultHighlighter;
 import javax.swing.text.Highlighter;
@@ -77,7 +81,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	int MAX_COMBO_PREFERENCES=15;
 	
 	private enum FieldType {
-		ComboDirectory,ComboText,ComboFileName,ComboAfter,ComboFindText; //no cambiar estos nombres
+		ComboDirectory,ComboText,ComboFileName,ComboAfter,ComboFindText,Exclusions,Compare; //no cambiar estos nombres
 	}
 	
 	private JFrame frmHuntfiles;
@@ -141,6 +145,9 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	HuntFiles huntFiles=null;
 	private JButton buttonCopyTxt;
 	
+	private List<String> exclusions=new ArrayList<String>();
+	private String compareCommand=null;
+	
 	/**
 	 * Launch the application.
 	 */
@@ -162,16 +169,37 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	 */
 	public HuntFilesMainWindow() {
 		initialize();
+		initValues();
 	}
 
 	public HuntFilesMainWindow(String [] s) {
-		initialize();
+		this();
 	}
 	
+	private void initValues() {
+		try {
+			List<String> compareCommands=loadPreference(FieldType.Compare);
+			compareCommand=compareCommands.get(0);
+		} catch (Exception e) {
+			compareCommand="C:/Program Files (x86)/Beyond Compare 3/BCompare.exe";
+		}
+		appendErrMsg("COMPARE COMMAND init with:"+compareCommand);
+		try {
+			exclusions=loadPreference(FieldType.Exclusions);
+		} catch (Exception e) {
+			exclusions=new ArrayList<String>();
+			exclusions.add("*/WEB-INF/log/*");
+			exclusions.add("*/WEB-INF/classes/*");
+		}
+		appendErrMsg("EXCLUSIONES init with:"+exclusions);
+	}
+
 	/**
 	 * Initialize the contents of the frame.
 	 */
 	private void initialize() {
+		textPaneError = new JTextPane();
+	
 		frmHuntfiles = new JFrame();
 		frmHuntfiles.setTitle("HuntFiles 1.0");
 		frmHuntfiles.setBounds(100, 100, 637, 446);
@@ -210,6 +238,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		panelCriteriaLabel.add(labelDirectory);
 		
 		botonExclusions = new JButton("!");
+		botonExclusions.setFont(new Font("Tahoma", Font.PLAIN, 11));
 		botonExclusions.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				abrirPanelExclusiones();
@@ -294,13 +323,13 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		labelLessThanKb = new JLabel("< (k)");
 		labelLessThanKb.setFont(new Font("Tahoma", Font.PLAIN, 9));
 		labelLessThanKb.setToolTipText("tama\u00F1o menor de ([B Bytes,K kiloBytes,M megaBytes ,G gigaBytes] defecto K)");
-		labelLessThanKb.setBounds(200, 0, 30, 14);
+		labelLessThanKb.setBounds(210, 0, 25, 14);
 		panelCriteriaParams2.add(labelLessThanKb);
 		
 		labelGreaterThan = new JLabel("> (k)");
 		labelGreaterThan.setFont(new Font("Tahoma", Font.PLAIN, 9));
 		labelGreaterThan.setToolTipText("tama\u00F1o mayor de  ([B Bytes,K kiloBytes,M megaBytes ,G gigaBytes] defecto K)");
-		labelGreaterThan.setBounds(200, 21, 30, 14);
+		labelGreaterThan.setBounds(210, 21, 25, 14);
 		panelCriteriaParams2.add(labelGreaterThan);
 		
 		textGreaterThan = new JTextField();
@@ -321,11 +350,13 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 				starSearch();
 			}
 		});
+		buttonStart.setFont(new Font("Tahoma", Font.BOLD, 13));
 		buttonStart.setToolTipText("INICIAR BUSQUEDA");
 		buttonStart.setBounds(132, 39, 100, 19);
 		panelCriteriaParams2.add(buttonStart);
 		
 		buttonStop = new JButton("Stop");
+		buttonStop.setFont(new Font("Tahoma", Font.BOLD, 13));
 		buttonStop.setBounds(235, 39, 65, 18);
 		panelCriteriaParams2.add(buttonStop);
 		buttonStop.addActionListener(new ActionListener() {
@@ -368,7 +399,21 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		scrollPaneFileList = new JScrollPane();
 		panelFileList.add(scrollPaneFileList);
 		
-		tableFiles = new JTable();
+		tableFiles = new JTable() {
+		    public Component prepareRenderer(TableCellRenderer renderer, int row, int column) {
+		        Component c = super.prepareRenderer(renderer, row, column);
+		        if (c instanceof JComponent) {
+		           //if(column == X){
+		            JComponent jc = (JComponent) c;
+		            jc.setToolTipText(getValueAt(row, column).toString());
+		           //}
+		        }
+		        return c;
+		    }
+		};
+		
+		
+		tableFiles.setFont(new Font("Tahoma", Font.PLAIN, 10));
 		scrollPaneFileList.setViewportView(tableFiles);
 		filesTableModel = new FilesTableModel(tableFiles);
 		tableFiles.setModel(filesTableModel);
@@ -393,6 +438,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		
 		buttonToZip = new JButton("to Zip");
 		buttonToZip.setMargin(new Insets(2, 2, 2, 2));
+		buttonToZip.setFont(new Font("Tahoma", Font.PLAIN, 11));
 		buttonToZip.setToolTipText("crear zip con los resultados seleccionados");
 		buttonToZip.setBounds(5, 5, 75, 15);
 		panelOptions.add(buttonToZip);
@@ -405,6 +451,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		buttonOpenInExplorer = new JButton("explorer");
 		buttonOpenInExplorer.setMargin(new Insets(2, 2, 2, 2));
 		buttonOpenInExplorer.setToolTipText("abrir en explorer");
+		buttonOpenInExplorer.setFont(new Font("Tahoma", Font.PLAIN, 11));
 		buttonOpenInExplorer.setBounds(5, 25, 75, 15);
 		panelOptions.add(buttonOpenInExplorer);
 		buttonOpenInExplorer.addActionListener(new ActionListener() {
@@ -416,6 +463,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		btnDuplicate = new JButton("duplicate");
 		btnDuplicate.setMargin(new Insets(2, 2, 2, 2));
 		btnDuplicate.setToolTipText("crea duplicado");
+		btnDuplicate.setFont(new Font("Tahoma", Font.PLAIN, 11));
 		btnDuplicate.setBounds(5, 45, 75, 15);
 		panelOptions.add(btnDuplicate);
 		btnDuplicate.addActionListener(new ActionListener() {
@@ -457,12 +505,14 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		});
 		
 		buttonOpen = new JButton("open");
+		buttonOpen.setFont(new Font("Tahoma", Font.PLAIN, 11));
 		buttonOpen.setMargin(new Insets(2, 2, 2, 2));
 		buttonOpen.setToolTipText("abrir");
 		buttonOpen.setBounds(5, 100, 75, 15);
 		panelOptions.add(buttonOpen);
 		
 		buttonCopyTxt = new JButton("copy txt");
+		buttonCopyTxt.setFont(new Font("Tahoma", Font.PLAIN, 11));
 		buttonCopyTxt.setMargin(new Insets(2, 2, 2, 2));
 		buttonCopyTxt.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -483,6 +533,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		});
 		
 		buttonCopy = new JButton("copy");
+		buttonCopy.setFont(new Font("Tahoma", Font.PLAIN, 11));
 		buttonCopy.setMargin(new Insets(2, 2, 2, 2));
 		buttonCopy.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -511,7 +562,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		scrollPaneErrores = new JScrollPane();
 		panelErrores.add(scrollPaneErrores, BorderLayout.CENTER);
 		
-		textPaneError = new JTextPane();
+		
 		textPaneError.setBackground(Color.LIGHT_GRAY);
 		textPaneError.setFont(new Font("Tahoma", Font.PLAIN, 9));
 		scrollPaneErrores.setViewportView(textPaneError);
@@ -617,10 +668,55 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		setEnabled(true);
 	}
 
+	
+	
+	
 	protected void abrirPanelExclusiones() {
-		askForString("TO DO. abrir panel de exclusiones de directorios", "");
+		StringBuilder sb=new StringBuilder();
+		for (String s:exclusions) {
+			sb.append(s).append(NL);
+		}
+		String newExclusions=askForMultiString("directory exclusion list",sb.toString());
+		if (newExclusions!=null) {
+			StringTokenizer st=new StringTokenizer(newExclusions, "\r\n");
+			exclusions.clear();
+			while (st.hasMoreTokens()) {
+				String tk=st.nextToken().trim();
+				if (StringUtils.isNotBlank(tk)) {
+					exclusions.add(tk);
+				}
+			}
+			savePreference(FieldType.Exclusions,exclusions);
+		}
 	}
 
+	private List<String> loadPreference(FieldType fieldType) throws Exception {
+		List<String> strings=new ArrayList<String>();
+		try (BufferedReader br = new BufferedReader(new FileReader(getPreferenceFile(fieldType)))) {
+			String lin=null;
+			while ((lin=br.readLine())!=null) {
+				if (!lin.trim().equals("")) {
+					strings.add(lin);
+				}
+			}
+		} catch (Exception e) {
+			appendErrMsg("Error reading preferences "+fieldType.name()+" :: "+e);
+			throw e;
+		}
+		return strings;
+	}	
+	
+	private void savePreference(FieldType fieldType,List<String> pref) {
+		try (FileWriter fw = new FileWriter(getPreferenceFile(fieldType))) {
+			for (String s:pref) {
+				fw.write(s+NL);
+			}
+		} catch (IOException e) {
+			appendErrMsg("Error saving preferences "+fieldType.name()+" :: "+e);
+		}
+	}
+	
+	
 	protected void copyFilesTxt() {
 		boolean withHits=chckbxCopyHits.isSelected();
 		List<FileInfo> files=getSelectedFiles();
@@ -651,8 +747,6 @@ public class HuntFilesMainWindow implements HuntFilesListener {
         Toolkit.getDefaultToolkit().getSystemClipboard().setContents(ft, new ClipboardOwner() {
 			@Override
 			public void lostOwnership(Clipboard clipboard, Transferable contents) {
-				// TODO Auto-generated method stub
-				
 			}
 		});
 	}
@@ -671,6 +765,37 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		}
 		return false;
 	}
+	
+	public static String askForMultiString(String message,String value) {
+		JTextArea ta = new JTextArea(20, 100);
+		ta.setFont(new Font("Tahoma", Font.PLAIN, 11));
+		ta.setText(value);
+		int dialogResult=JOptionPane.showConfirmDialog(null, new JScrollPane(ta),message,JOptionPane.YES_NO_OPTION);
+		if(dialogResult == JOptionPane.YES_OPTION){
+			  return ta.getText();
+		}
+		return null;
+	}
+	
+	
+		
+	
+	public String askForCombo(String message,FieldType fieldType,String value) {
+		JComboBox<String> combo=new JComboBox<>();
+		DefaultComboBoxModel<String> model = new DefaultComboBoxModel<String>();
+		loadPreference(model, fieldType);
+		combo.setModel(model);
+		combo.setEditable(true);
+		combo.setSelectedItem(value);
+		combo.setMinimumSize(new Dimension(150, 20));
+		combo.setPreferredSize(new Dimension(150, 20));
+		int dialogResult=JOptionPane.showConfirmDialog(null, combo,message,JOptionPane.YES_NO_OPTION);
+		if(dialogResult == JOptionPane.YES_OPTION){
+			  return getComboValue(combo, model, fieldType);
+		}
+		return null;
+	}
+	
 	
 	public static void showMessage(String message) {
 		JOptionPane.showMessageDialog(null, message,"HuntFiles",JOptionPane.OK_OPTION);
@@ -711,12 +836,25 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	}
 	
 	protected void compareOptions() {
-		askForString("to do", "");
+		String x=askForCombo("set compare command", FieldType.Compare, compareCommand);
+		if (x!=null) {
+			compareCommand=x;
+		}
 	}
 
 	protected void comparar() {
-		 getSelectedFiles() ;
-		askForString("to do", "");
+		List<FileInfo> files=getSelectedFiles();
+		if (files.size()!=2) {
+			showMessage("only 2 files for compare");
+			return;
+		}
+		String [] command={compareCommand,files.get(0).getFile().getPath(),files.get(1).getFile().getPath()};
+		try {
+			Runtime.getRuntime().exec(command);
+		} catch (IOException e) {
+			showMessage("ERROR executing compare command "+compareCommand+" :: "+e);
+		}
+		
 	}
 
 	protected void duplicar() {
@@ -954,7 +1092,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 				}
 			}
 		} catch (IOException e) {
-			System.out.println("Error al leer las preferencias de "+fieldType.name());
+			appendErrMsg("Error reading preferences "+fieldType.name()+" :: "+e);
 		}
 	}
 	
@@ -966,7 +1104,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 				fw.write(x+NL);
 			}
 		} catch (IOException e) {
-			System.out.println("Error al guardar las preferencias de "+fieldType.name());
+			appendErrMsg("Error saving preferences "+fieldType.name()+" :: "+e);
 		}
 	}
 	
@@ -985,7 +1123,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		String dirValue=getComboValue(comboDirectory, directoryModel,FieldType.ComboDirectory);
 		String filenameValue=getComboValue(comboFileName, fileNameModel,FieldType.ComboFileName);
 		String afterValue=getComboValue(comboAfter, afterModel,FieldType.ComboAfter);
-		if (afterValue.indexOf("#")>-1) {
+		if (afterValue!=null && afterValue.indexOf("#")>-1) {
 			afterValue=afterValue.substring(0, afterValue.indexOf("#")).trim();
 		}
 		String beforeValue=textBefore.getText();
@@ -1027,7 +1165,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		searchOptions.setRecursive(recursive);
 		searchOptions.setZ7(z7);
 		searchOptions.setZipjar(zipjar);
-		searchOptions.setIgnorePaths(null);
+		searchOptions.setIgnorePaths(exclusions);
 		
 		filesTableModel.clearFiles();
 		filesTableModel.fireTableDataChanged();
@@ -1118,7 +1256,8 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 			            	  File f=files[0];
 			            	  if (f.isDirectory()) {
 			            		  String dir=f.getAbsolutePath();
-			            		  comboDirectory.getEditor().setItem(dir);
+			            		  //comboDirectory.getEditor().setItem(dir);
+			            		  comboDirectory.setSelectedItem(dir);
 			            	  } else {
 			            		  showMessage("drop only 1 directory, not a file");
 			            	  }

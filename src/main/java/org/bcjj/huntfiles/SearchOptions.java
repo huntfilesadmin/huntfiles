@@ -35,6 +35,7 @@ public class SearchOptions {
 	private boolean rar=false;
 	private List<String> ignorePaths=null;
 	
+	private boolean gui=false;
 
 
 	public SearchOptions(String dir) {
@@ -44,8 +45,12 @@ public class SearchOptions {
 	public SearchOptions(String [] args) throws Exception {
         Options options = new Options();
 
+        Option guiOpt = new Option("gui", "gui", false, "graphical interface");
+        guiOpt.setRequired(false);
+        options.addOption(guiOpt);
+        
         Option dirOpt = new Option("d", "dir", true, "search directory");
-        dirOpt.setRequired(true);
+        dirOpt.setRequired(false);
         options.addOption(dirOpt);
 
         Option filenameOpt = new Option("f", "file", true, "search file name");
@@ -109,7 +114,7 @@ public class SearchOptions {
             throw e;
         }
 
-        
+        gui=cmd.hasOption(guiOpt.getLongOpt());
         
         setDir(cmd.getOptionValue(dirOpt.getLongOpt()));
         setFilename(cmd.getOptionValue(filenameOpt.getLongOpt(),""));
@@ -139,11 +144,17 @@ public class SearchOptions {
         }
 
         String [] ignorePaths=cmd.getOptionValues(ignorePathOpt.getLongOpt()); 
-        List<String>paths=Arrays.asList(ignorePaths);
-        setIgnorePaths(paths);
+        if (ignorePaths!=null) {
+        	List<String>paths=Arrays.asList(ignorePaths);
+        	setIgnorePaths(paths);
+        }
         
 	}
 	
+	public boolean isGui() {
+		return gui;
+	}
+
 	private String getStr(String str) {
 		if (str==null || str.trim().equals("")) {
 			return null;

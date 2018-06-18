@@ -19,6 +19,7 @@ import org.apache.commons.io.IOCase;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.apache.commons.lang3.StringUtils;
 import org.bcjj.huntfiles.FileInfo.FileType;
+import org.bcjj.huntfiles.gui.HuntFilesMainWindow;
 
 import com.github.junrar.Archive;
 import com.github.junrar.exception.RarException;
@@ -53,9 +54,13 @@ public class HuntFiles  {
 			
 		};
 		
-		HuntFiles huntFiles=new HuntFiles(searchOptions,huntFilesListener);
-		String stats=huntFiles.search();
-		System.out.println("search stats:"+stats);
+		if (searchOptions.isGui()) {
+			HuntFilesMainWindow.main(s);
+		} else {
+			HuntFiles huntFiles=new HuntFiles(searchOptions,huntFilesListener);
+			String stats=huntFiles.search();
+			System.out.println("search stats:"+stats);
+		}
 	}
 	
 	HuntFilesListener listener=null;
@@ -69,8 +74,11 @@ public class HuntFiles  {
 	
 
 
-	public String search() {
+	public String search() throws Exception {
 		stop=false;
+		if (searchOptions==null || searchOptions.getDir()==null) {
+			throw new Exception("Initial Directory is needed");
+		}
 		searchInDir(new File(searchOptions.getDir()));
 		return "ok";
 	}
