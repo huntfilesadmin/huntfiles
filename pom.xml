@@ -40,7 +40,7 @@
 						</goals>
 						<configuration>
 							<classifier>boot</classifier>
-							<mainClass>org.bcjj.huntfiles.HuntFiles</mainClass>
+							<mainClass>HuntFiles</mainClass>
 						</configuration>
 					</execution>
 				</executions>
