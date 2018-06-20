@@ -166,7 +166,21 @@ public class SearchOptions {
 		if (dateStr==null || dateStr.trim().equals("")) {
 			return null;
 		}
-		SimpleDateFormat sdf=new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+		try {
+			SimpleDateFormat sdf=new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+			Date d=sdf.parse(dateStr.trim());
+			return d;
+		} catch (Exception r) {
+			//ignore
+		}
+		try {
+			SimpleDateFormat sdf=new SimpleDateFormat("yyyy/MM/dd HH:mm");
+			Date d=sdf.parse(dateStr.trim());
+			return d;
+		} catch (Exception r) {
+			//ignore
+		}
+		SimpleDateFormat sdf=new SimpleDateFormat("yyyy/MM/dd");
 		Date d=sdf.parse(dateStr.trim());
 		return d;
 	}

@@ -69,7 +69,7 @@ public class FilesTableModel extends AbstractTableModel {
 			return f.getPath();
 		}
 		if (columna==INTERNALPATH) {
-			return fi.getRutaInPackage();
+			return fi.getPathInPackage();
 		}
 		if (columna==SIZE) {
 			return fi.getSize();
