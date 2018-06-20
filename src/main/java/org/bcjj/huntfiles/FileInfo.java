@@ -21,23 +21,23 @@ public class FileInfo {
 	
 	File file;
 	String name;
-	String rutaInPackage;
+	String pathInPackage;
 	String fechMod; 
 	Long size;
 	FileType fileType;
 	SearchOptions searchOptions;
 	
 	List<Hit> hits=null;
-	public FileInfo(File file, String rutaInPackage, List<Hit> hits, FileType fileType,SearchOptions searchOptions) {
+	public FileInfo(File file, String pathInPackage, Long sizeInPackage, Long dateInPackage, List<Hit> hits, FileType fileType,SearchOptions searchOptions) {
 		super();
 		this.file = file;
 		this.fileType=fileType;
 		this.searchOptions=searchOptions;
 		
-		if (StringUtils.isBlank(rutaInPackage)) {
+		if (StringUtils.isBlank(pathInPackage)) {
 			name=file.getName();
 		} else {
-			String x=rutaInPackage;
+			String x=pathInPackage;
 			x=StringUtils.replace(x,"\\","/");
 			int ult=x.lastIndexOf("/");
 			if (ult>-1) {
@@ -48,15 +48,22 @@ public class FileInfo {
 		}
 		
 		Date d=new Date(file.lastModified());
+		if (dateInPackage!=null) {
+			d=new Date(dateInPackage);
+		}
 		SimpleDateFormat sdf=new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
 		fechMod=sdf.format(d);	
 		
-		size=file.length();
 		
-		if (rutaInPackage==null) {
-			rutaInPackage="";
+		size=file.length();
+		if (sizeInPackage!=null) {
+			size=sizeInPackage;
 		}
-		this.rutaInPackage = rutaInPackage;
+		
+		if (pathInPackage==null) {
+			pathInPackage="";
+		}
+		this.pathInPackage = pathInPackage;
 		this.hits=hits;
 	}
 	
@@ -80,8 +87,8 @@ public class FileInfo {
 		return fechMod;
 	}	
 	
-	public String getRutaInPackage() {
-		return rutaInPackage;
+	public String getPathInPackage() {
+		return pathInPackage;
 	}
 
 	public List<Hit> getHits() {
@@ -95,7 +102,7 @@ public class FileInfo {
 		} 
 		if (fileType==FileType.Zip) {
 			ZipFile zipFile=new ZipFile(file);
-			ZipEntry zipEntry=zipFile.getEntry(rutaInPackage);
+			ZipEntry zipEntry=zipFile.getEntry(pathInPackage);
 			InputStream is=zipFile.getInputStream(zipEntry);
 			return is;
 		}
@@ -105,8 +112,8 @@ public class FileInfo {
 	
 	 public String toString() {
 		 String x=""+file;
-		 if (!rutaInPackage.equals("")) {
-			 x=x+"|"+rutaInPackage;
+		 if (!pathInPackage.equals("")) {
+			 x=x+"|"+pathInPackage;
 		 }
 		 return x;
 	 }

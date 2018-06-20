@@ -245,7 +245,7 @@ public class HuntFiles  {
 			}
 		}
 		
-		FileInfo fileInfo=new FileInfo(file, path, hits, FileType.Zip,searchOptions);
+		FileInfo fileInfo=new FileInfo(file, path, zipEntry.getSize(), zipEntry.getTime() ,hits, FileType.Zip,searchOptions);
 		listener.addFile(fileInfo);
 		return;
 	}
@@ -307,7 +307,7 @@ public class HuntFiles  {
 			}
 		}
 		
-		FileInfo fileInfo=new FileInfo(file, null, hits, FileType.File,searchOptions);
+		FileInfo fileInfo=new FileInfo(file, null,null,null, hits, FileType.File,searchOptions);
 		listener.addFile(fileInfo);
 		
 	}

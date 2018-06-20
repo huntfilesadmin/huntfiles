@@ -654,7 +654,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		
 		comboFindTextPreview = new JComboBox<String>();
 		comboFindTextPreview.setEditable(true);
-		findTextModel = createAfterModel();
+		findTextModel = createFindTextModel();
 		comboFindTextPreview.setModel(findTextModel);
 		comboFindTextPreview.setFont(new Font("Tahoma", Font.PLAIN, 9));
 		comboFindTextPreview.setBounds(0, 15, 100, 20);
@@ -1092,7 +1092,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 				text=getStringFromInputStream(is1);
 				textAreaFileText.setText(text);
 				String searchText=fileInfo.getSearchOptions().getText();
-				String textValue=getComboValue(comboText, textModel,FieldType.ComboText);
+				String textValue=getComboValue(comboFindTextPreview, findTextModel,FieldType.ComboFindText);
 				lastLookFor=textValue;
 				findTextInJText(textAreaFileText, searchText, textValue,TypeFind.init);
 				
