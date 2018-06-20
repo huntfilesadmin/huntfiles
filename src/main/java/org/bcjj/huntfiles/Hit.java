@@ -13,5 +13,13 @@ public class Hit {
  public String toString() {
 	 return "("+String.format("%1$6s", lineNumber)+"):: "+line;
  }
+
+public int getLineNumber() {
+	return lineNumber;
+}
+
+public String getLine() {
+	return line;
+}
  
 }

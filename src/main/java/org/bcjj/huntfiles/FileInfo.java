@@ -25,12 +25,14 @@ public class FileInfo {
 	String fechMod; 
 	Long size;
 	FileType fileType;
+	SearchOptions searchOptions;
 	
 	List<Hit> hits=null;
-	public FileInfo(File file, String rutaInPackage, List<Hit> hits, FileType fileType) {
+	public FileInfo(File file, String rutaInPackage, List<Hit> hits, FileType fileType,SearchOptions searchOptions) {
 		super();
 		this.file = file;
 		this.fileType=fileType;
+		this.searchOptions=searchOptions;
 		
 		if (StringUtils.isBlank(rutaInPackage)) {
 			name=file.getName();
@@ -58,6 +60,10 @@ public class FileInfo {
 		this.hits=hits;
 	}
 	
+	public SearchOptions getSearchOptions() {
+		return searchOptions;
+	}
+
 	public String getName() {
 		return name;
 	}

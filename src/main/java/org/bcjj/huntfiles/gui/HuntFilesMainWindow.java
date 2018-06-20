@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -55,7 +56,9 @@ import javax.swing.event.ListSelectionListener;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultHighlighter;
+import javax.swing.text.DefaultHighlighter.DefaultHighlightPainter;
 import javax.swing.text.Highlighter;
+import javax.swing.text.Highlighter.Highlight;
 import javax.swing.text.JTextComponent;
 
 import org.apache.commons.io.FileUtils;
@@ -75,6 +78,8 @@ import javax.swing.JTable;
 import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
 import javax.swing.JTextArea;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 public class HuntFilesMainWindow implements HuntFilesListener {
 
@@ -83,6 +88,8 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	private enum FieldType {
 		ComboDirectory,ComboText,ComboFileName,ComboAfter,ComboFindText,Exclusions,Compare; //no cambiar estos nombres
 	}
+	
+	private enum TypeFind {init, up, down};
 	
 	private JFrame frmHuntfiles;
 	private JTextField textBefore;
@@ -141,12 +148,17 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	private JCheckBox chckbxCopyHits;
 	private JScrollPane scrollPane_1;
 	private JTextArea textAreaHits;
+	private List<Hit> hitsTextArea;
 
 	HuntFiles huntFiles=null;
 	private JButton buttonCopyTxt;
 	
 	private List<String> exclusions=new ArrayList<String>();
 	private String compareCommand=null;
+	
+	DefaultHighlighter.DefaultHighlightPainter mainHighlighter = new DefaultHighlighter.DefaultHighlightPainter(Color.YELLOW);
+	DefaultHighlighter.DefaultHighlightPainter customHighlighter = new DefaultHighlighter.DefaultHighlightPainter(Color.GREEN);
+	private String lastLookFor=null;
 	
 	/**
 	 * Launch the application.
@@ -177,6 +189,11 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	}
 	
 	private void initValues() {
+		boolean x=true;
+		if (x) { //trick for WindowBuilder Pro to parse, ignoring this...
+			TextLineNumber textLineNumber = new TextLineNumber(textAreaFileText,5);
+			scrollPane.setRowHeaderView( textLineNumber );
+		} 
 		try {
 			List<String> compareCommands=loadPreference(FieldType.Compare);
 			compareCommand=compareCommands.get(0);
@@ -227,7 +244,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		
 		labelText = new JLabel("Text:");
 		labelText.setFont(new Font("Tahoma", Font.PLAIN, 10));
-		labelText.setToolTipText("texto");
+		labelText.setToolTipText("texto a buscar");
 		labelText.setBounds(5, 22, 46, 14);
 		panelCriteriaLabel.add(labelText);
 		
@@ -268,12 +285,14 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		panelCriteriaParameters.add(comboDirectory, BorderLayout.SOUTH);
 		
 		comboText = new JComboBox<String>();
+		comboText.setToolTipText("plain text");
 		textModel = createTextModel();
 		comboText.setModel(textModel);
 		comboText.setEditable(true);
 		panelCriteriaParameters.add(comboText, BorderLayout.CENTER);
 		
 		comboFileName = new JComboBox<String>();
+		comboFileName.setToolTipText("dos expression  *.*");
 		fileNameModel = createFileNameModel();
 		comboFileName.setModel(fileNameModel);
 		comboFileName.setEditable(true);
@@ -306,16 +325,19 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		textBefore.setColumns(10);
 		
 		chckbxZipjar = new JCheckBox("zip,jar");
+		chckbxZipjar.setToolTipText("zip,jar,war");
 		chckbxZipjar.setFont(new Font("Tahoma", Font.PLAIN, 9));
 		chckbxZipjar.setBounds(0, 37, 52, 23);
 		panelCriteriaParams2.add(chckbxZipjar);
 		
 		chckbxRar = new JCheckBox("rar");
+		chckbxRar.setVisible(false);
 		chckbxRar.setFont(new Font("Tahoma", Font.PLAIN, 9));
 		chckbxRar.setBounds(52, 37, 39, 23);
 		panelCriteriaParams2.add(chckbxRar);
 		
 		chckbxz = new JCheckBox("7z");
+		chckbxz.setVisible(false);
 		chckbxz.setFont(new Font("Tahoma", Font.PLAIN, 9));
 		chckbxz.setBounds(89, 37, 37, 23);
 		panelCriteriaParams2.add(chckbxz);
@@ -591,6 +613,14 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		panelFilePreviewHits.add(scrollPane_1, BorderLayout.CENTER);
 		
 		textAreaHits = new JTextArea();
+		textAreaHits.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				if (e.getClickCount()==2) {
+					dobleClickEnTextAreaHits(e);
+				}
+			}
+		});
 		scrollPane_1.setViewportView(textAreaHits);
 		
 		JPanel panelFilePreview = new JPanel();
@@ -611,6 +641,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		
 		textAreaFileText = new JTextArea();
 		scrollPane.setViewportView(textAreaFileText);
+
 		
 		
 		JPanel panelPreviewOptions = new JPanel();
@@ -670,7 +701,31 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 
 	
 	
+	public int getLineStartIndex(JTextComponent textComp, int lineNumber) {
+	    if (lineNumber == 0) { return 0; }
+	    try {
+	        JTextArea jta = (JTextArea) textComp;
+	        return jta.getLineStartOffset(lineNumber-1);
+	    } catch (BadLocationException ex) { return -1; }
+	}
 	
+	protected void dobleClickEnTextAreaHits(MouseEvent e) {
+        
+        try {
+        	int caretpos = textAreaHits.getCaretPosition();
+			int linenum = textAreaHits.getLineOfOffset(caretpos);
+			Hit hit=hitsTextArea.get(linenum);
+			int lineNumber=hit.getLineNumber();
+			int index = getLineStartIndex(textAreaFileText, lineNumber);
+			if (index != -1) { 
+				textAreaFileText.setCaretPosition(index);
+			}
+			textAreaFileText.requestFocus();
+		} catch (BadLocationException e1) {
+			
+		}
+	}
+
 	protected void abrirPanelExclusiones() {
 		StringBuilder sb=new StringBuilder();
 		for (String s:exclusions) {
@@ -802,14 +857,32 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	}
 	
 	protected void findDown() {
-		//comboFindTextPreview
-		askForString("to do", "");
-		String textValue=getComboValue(comboFindTextPreview, textModel,FieldType.ComboFindText);
-		findTextInJText(textAreaFileText, textValue);
+		findCustom(TypeFind.down);
+	}
+
+	private void findCustom(TypeFind typeFind) {
+		String textValue=getComboValue(comboFindTextPreview, findTextModel,FieldType.ComboFindText);
+		String lookFor=null;
+		if (distinct(textValue,lastLookFor)) {
+			clearCustomHighlighter(textAreaFileText);
+			lookFor=textValue;
+			lastLookFor=lookFor;
+		}
+		findTextInJText(textAreaFileText,null,lookFor, typeFind);
+	}
+	
+	private boolean distinct(String textValue, String lastLookFor2) {
+		if (textValue==null) {
+			textValue="";
+		}
+		if (lastLookFor2==null) {
+			lastLookFor2="";
+		}
+		return !textValue.equals(lastLookFor2);
 	}
 
 	protected void findUp() {
-		askForString("to do", "");
+		findCustom(TypeFind.up);
 	}
 
 	protected void openFile() {
@@ -992,8 +1065,11 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	
 	public void preview(FileInfo fileInfo) {
 		if (fileInfo==null) {
+			
 			textAreaFileText.setText("");
+			findTextInJText(textAreaFileText,"no","no",TypeFind.init);
 			textAreaHits.setText("");
+			hitsTextArea=new ArrayList<Hit>();
 			try {
 				panelImg.setImageInputStream(null);
 			} catch (Exception e) {
@@ -1006,6 +1082,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 					hits.append(hit).append(NL);
 				}
 			}
+			hitsTextArea=fileInfo.getHits();
 			textAreaHits.setText(hits.toString());
 			
 			String text="";
@@ -1014,9 +1091,10 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 				is1=fileInfo.getInputStream();
 				text=getStringFromInputStream(is1);
 				textAreaFileText.setText(text);
-				//comboFindTextPreview
+				String searchText=fileInfo.getSearchOptions().getText();
 				String textValue=getComboValue(comboText, textModel,FieldType.ComboText);
-				findTextInJText(textAreaFileText, textValue);
+				lastLookFor=textValue;
+				findTextInJText(textAreaFileText, searchText, textValue,TypeFind.init);
 				
 			} catch (Exception r) {
 				try {
@@ -1046,8 +1124,88 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	}
 	
 	
-	public void findTextInJText(JTextComponent jText,String lookFor) {
-		//askForString("to do", "");
+	public void clearCustomHighlighter(JTextComponent jText) {
+		Highlighter highlighter = jText.getHighlighter();
+		List<Highlight> toRemove=new ArrayList<Highlight>();
+		for (Highlight highlight:highlighter.getHighlights()) {
+			if (highlight.getPainter()==customHighlighter) {
+				toRemove.add(highlight);
+			}
+		}
+		for (Highlight highlight:toRemove) {
+			highlighter.removeHighlight(highlight);
+		}
+	}
+	
+	public void findTextInJText(JTextComponent jText,String initialSearch,String lookFor,TypeFind typeFind) {
+		Highlighter highlighter = jText.getHighlighter();
+		if (typeFind==typeFind.init) {
+			highlighter.removeAllHighlights();
+			if (StringUtils.isNotBlank(initialSearch)) {
+				findTextInJText(jText,initialSearch,mainHighlighter);
+			}
+		}
+		if (StringUtils.isNotBlank(lookFor)) {
+			findTextInJText(jText,lookFor,customHighlighter);
+		}
+		ArrayList<Integer> starts=new ArrayList<Integer>();
+		for (Highlight highlight:highlighter.getHighlights()) {
+			starts.add(highlight.getStartOffset());
+		}
+		Collections.sort(starts);
+		if (typeFind==TypeFind.init) {
+			if (starts.size()>0) {
+				jText.setCaretPosition(starts.get(0));
+			} else {
+				jText.setCaretPosition(0);
+			}
+		} else if (starts.size()>0) {
+			int act=jText.getCaretPosition();
+			int sel=0;
+			if (typeFind==TypeFind.up) {
+				for (sel=0;sel<starts.size();sel++) {
+					if (starts.get(sel)>=act) {
+						break;
+					}
+				}
+				sel=sel-1;
+				if (sel<0) {
+					sel=starts.size()-1;
+				}
+			} else if (typeFind==TypeFind.down) {
+				for (sel=0;sel<starts.size();sel++) {
+					if (starts.get(sel)>act) {
+						break;
+					}
+				}
+				if (sel>=starts.size()) {
+					sel=0;
+				}
+			}
+			int newPos=starts.get(sel);
+			jText.setCaretPosition(newPos);
+		}
+		
+		
+		jText.requestFocus();
+		
+	}
+
+	private void findTextInJText(JTextComponent jText, String lookFor, DefaultHighlightPainter customHighlighter2) {
+		if (StringUtils.isBlank(lookFor)) {
+			return;
+		}
+		lookFor=lookFor.toLowerCase();
+		String text=jText.getText().toLowerCase();
+		int pos=-1;
+		while ((pos=text.indexOf(lookFor,pos+1))>-1) {
+			try {
+				jText.getHighlighter().addHighlight(pos, pos+lookFor.length(), customHighlighter2);
+			} catch (BadLocationException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 	}
 
 	public String getStringFromInputStream(InputStream inputStream) throws IOException {

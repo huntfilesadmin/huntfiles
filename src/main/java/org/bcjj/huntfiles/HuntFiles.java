@@ -175,11 +175,25 @@ public class HuntFiles  {
 		throw new Exception("Rar Search No Implemented yet");
 	}	
 	
+	private String getNameFromPath(String path) {
+		String name=path;
+		path=StringUtils.replace(path,"\\","/");
+		int ult=path.lastIndexOf("/");
+		if (ult>-1) {
+			name=path.substring(ult+1);
+		} else {
+			name=path;
+		}
+		return name;
+	}
+	
 	private void searchInZipEntry(ZipEntry zipEntry,ZipFile zipFile,File file) {
 		String path=zipEntry.getName();
 		
 		if (searchOptions.getFilename()!=null) {
-			if (!FilenameUtils.wildcardMatch(zipEntry.getName(), searchOptions.getFilename(), IOCase.INSENSITIVE)) {
+			String zipPath=zipEntry.getName();
+			String name=getNameFromPath(zipPath);
+			if (!FilenameUtils.wildcardMatch(name, searchOptions.getFilename(), IOCase.INSENSITIVE)) {
 				return;
 			}
 		}
@@ -231,7 +245,7 @@ public class HuntFiles  {
 			}
 		}
 		
-		FileInfo fileInfo=new FileInfo(file, path, hits, FileType.Zip);
+		FileInfo fileInfo=new FileInfo(file, path, hits, FileType.Zip,searchOptions);
 		listener.addFile(fileInfo);
 		return;
 	}
@@ -293,20 +307,23 @@ public class HuntFiles  {
 			}
 		}
 		
-		FileInfo fileInfo=new FileInfo(file, null, hits, FileType.File);
+		FileInfo fileInfo=new FileInfo(file, null, hits, FileType.File,searchOptions);
 		listener.addFile(fileInfo);
 		
 	}
 
 	
+
+	
 	private List<Hit> searchText(InputStream is, String text) throws Exception {
+		text=text.toLowerCase();
 		BufferedReader bufferedReader=new BufferedReader(new InputStreamReader(is));
 		String line="";
 		int lineNum=0;
 		List<Hit> hits=new ArrayList<Hit>();
 		while ((line=bufferedReader.readLine())!=null) {
 			lineNum++;
-			if (line.indexOf(text)>-1) {
+			if (line.toLowerCase().indexOf(text)>-1) {
 				Hit hit=new Hit(lineNum, line);
 				hits.add(hit);
 			}
