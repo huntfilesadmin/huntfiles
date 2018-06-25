@@ -70,7 +70,6 @@ import org.bcjj.huntfiles.HuntFilesListener;
 import org.bcjj.huntfiles.SearchOptions;
 
 
-import jdk.jfr.events.FileWriteEvent;
 import net.iharder.dnd.FileDrop;
 
 import javax.swing.JScrollPane;
@@ -101,9 +100,9 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	private JComboBox<String> comboFileName;
 	private JCheckBox checkBoxAfter;
 	private JCheckBox checkboxBefore;
-	private JCheckBox chckbxZipjar;
-	private JCheckBox chckbxRar;
-	private JCheckBox chckbxz;
+	private JCheckBox checkboxZipjar;
+	private JCheckBox checkboxRar;
+	private JCheckBox checkbox7z;
 	private JLabel labelLessThanKb;
 	private JLabel labelGreaterThan;
 	private JButton buttonStart;
@@ -160,6 +159,9 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	DefaultHighlighter.DefaultHighlightPainter customHighlighter = new DefaultHighlighter.DefaultHighlightPainter(Color.GREEN);
 	private String lastLookFor=null;
 	
+	boolean exclusionsFromSearchOptions=false;
+	private JCheckBox checkboxUpDownText;
+	
 	/**
 	 * Launch the application.
 	 */
@@ -176,24 +178,47 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		});
 	}
 
+	public static void main(final SearchOptions searchOptions) {
+		EventQueue.invokeLater(new Runnable() {
+			public void run() {
+				try {
+					HuntFilesMainWindow window = new HuntFilesMainWindow(searchOptions);
+					window.frmHuntfiles.setVisible(true);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		});
+	}
+	
+	
+	
+	public HuntFilesMainWindow() {
+		initialize();
+		postInitialize();
+	}
+	
 	/**
 	 * Create the application.
 	 */
-	public HuntFilesMainWindow() {
-		initialize();
-		initValues();
+	public HuntFilesMainWindow(SearchOptions searchOptions) {
+		this();
+		initValues(searchOptions);
 	}
 
-	public HuntFilesMainWindow(String [] s) {
+	public HuntFilesMainWindow(String [] s) throws Exception {
 		this();
+		SearchOptions searchOptions=new SearchOptions(s);
+		initValues(searchOptions);
 	}
 	
-	private void initValues() {
+	private void postInitialize() {
 		boolean x=true;
 		if (x) { //trick for WindowBuilder Pro to parse, ignoring this...
 			TextLineNumber textLineNumber = new TextLineNumber(textAreaFileText,5);
 			scrollPane.setRowHeaderView( textLineNumber );
-		} 
+		} 	
+		
 		try {
 			List<String> compareCommands=loadPreference(FieldType.Compare);
 			compareCommand=compareCommands.get(0);
@@ -201,6 +226,8 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 			compareCommand="C:/Program Files (x86)/Beyond Compare 3/BCompare.exe";
 		}
 		appendErrMsg("COMPARE COMMAND init with:"+compareCommand);
+		
+		exclusionsFromSearchOptions=false;
 		try {
 			exclusions=loadPreference(FieldType.Exclusions);
 		} catch (Exception e) {
@@ -209,6 +236,66 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 			exclusions.add("*/WEB-INF/classes/*");
 		}
 		appendErrMsg("EXCLUSIONES init with:"+exclusions);
+	}
+	
+	private void initValues(SearchOptions searchOptions) {
+		
+		if (searchOptions.getIgnorePaths()!=null) {
+			exclusions=searchOptions.getIgnorePaths();
+			exclusionsFromSearchOptions=true;
+		} else {
+			exclusionsFromSearchOptions=false;
+			try {
+				exclusions=loadPreference(FieldType.Exclusions);
+			} catch (Exception e) {
+				exclusions=new ArrayList<String>();
+				exclusions.add("*/WEB-INF/log/*");
+				exclusions.add("*/WEB-INF/classes/*");
+			}
+		}
+		appendErrMsg("EXCLUSIONES init with:"+exclusions);
+		
+		if (StringUtils.isNotBlank(searchOptions.getDir())) { 
+			comboDirectory.setSelectedItem(searchOptions.getDir());
+		}
+		if (StringUtils.isNotBlank(searchOptions.getFilename())) {
+			comboFileName.setSelectedItem(searchOptions.getFilename());
+		}
+		if (StringUtils.isNotBlank(searchOptions.getText())) {
+			comboText.setSelectedItem(searchOptions.getText());
+		}
+		if (searchOptions.getAfter()!=null) {
+			SimpleDateFormat sdf=new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+			Date d=new Date(searchOptions.getAfter());
+			comboAfter.setSelectedItem(sdf.format(d));
+			checkBoxAfter.setSelected(true);
+		}
+		if (searchOptions.getBefore()!=null) {
+			SimpleDateFormat sdf=new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+			Date d=new Date(searchOptions.getBefore());
+			textBefore.setText(sdf.format(d));
+			checkboxBefore.setSelected(true);
+		}
+		if (searchOptions.getGreaterThan()!=null) {
+			textGreaterThan.setText(""+searchOptions.getGreaterThan());
+		}
+		if (searchOptions.getLessThan()!=null) {
+			textLessThan.setText(""+searchOptions.getLessThan());
+		}
+		if (searchOptions.isZipjar()) {
+			checkboxZipjar.setSelected(true);
+		}
+		if (searchOptions.isZ7()) {
+			checkbox7z.setSelected(true);
+		}
+		if (searchOptions.isRar()) {
+			checkboxRar.setSelected(true);
+		}
+		if (searchOptions.isRecursive()) {
+			chechBoxSubdir.setSelected(true);
+		} else {
+			chechBoxSubdir.setSelected(false);
+		}
 	}
 
 	/**
@@ -311,36 +398,37 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		checkBoxAfter.setBounds(0, 0, 49, 14);
 		panelCriteriaParams2.add(checkBoxAfter);
 		
-		checkboxBefore = new JCheckBox("before");
+		checkboxBefore = new JCheckBox("before"); 
 		checkboxBefore.setFont(new Font("Tahoma", Font.PLAIN, 9));
 		checkboxBefore.setToolTipText("modificado despues de");
-		checkboxBefore.setBounds(0, 17, 57, 23);
+		checkboxBefore.setBounds(0, 17, 58, 23);
+		checkboxBefore.setMargin(new Insets(2, 2, 2, 2));
 		panelCriteriaParams2.add(checkboxBefore);
 		
 		textBefore = new JTextField();
 		textBefore.setFont(new Font("Tahoma", Font.PLAIN, 10));
 		textBefore.setToolTipText("formato:  yyyy/MM/dd HH:mm:ss");
-		textBefore.setBounds(55, 18, 119, 20);
+		textBefore.setBounds(60, 18, 119, 20);
 		panelCriteriaParams2.add(textBefore);
 		textBefore.setColumns(10);
 		
-		chckbxZipjar = new JCheckBox("zip,jar");
-		chckbxZipjar.setToolTipText("zip,jar,war");
-		chckbxZipjar.setFont(new Font("Tahoma", Font.PLAIN, 9));
-		chckbxZipjar.setBounds(0, 37, 52, 23);
-		panelCriteriaParams2.add(chckbxZipjar);
+		checkboxZipjar = new JCheckBox("zip,jar");
+		checkboxZipjar.setToolTipText("zip,jar,war");
+		checkboxZipjar.setFont(new Font("Tahoma", Font.PLAIN, 9));
+		checkboxZipjar.setBounds(0, 37, 52, 23);
+		panelCriteriaParams2.add(checkboxZipjar);
 		
-		chckbxRar = new JCheckBox("rar");
-		chckbxRar.setVisible(false);
-		chckbxRar.setFont(new Font("Tahoma", Font.PLAIN, 9));
-		chckbxRar.setBounds(52, 37, 39, 23);
-		panelCriteriaParams2.add(chckbxRar);
+		checkboxRar = new JCheckBox("rar"); 
+		checkboxRar.setVisible(false); //TODO: check rar
+		checkboxRar.setFont(new Font("Tahoma", Font.PLAIN, 9));
+		checkboxRar.setBounds(52, 37, 39, 23);
+		panelCriteriaParams2.add(checkboxRar);
 		
-		chckbxz = new JCheckBox("7z");
-		chckbxz.setVisible(false);
-		chckbxz.setFont(new Font("Tahoma", Font.PLAIN, 9));
-		chckbxz.setBounds(89, 37, 37, 23);
-		panelCriteriaParams2.add(chckbxz);
+		checkbox7z = new JCheckBox("7z"); 
+		checkbox7z.setVisible(false); //TODO: check 7z
+		checkbox7z.setFont(new Font("Tahoma", Font.PLAIN, 9));
+		checkbox7z.setBounds(89, 37, 37, 23);
+		panelCriteriaParams2.add(checkbox7z);
 		
 		labelLessThanKb = new JLabel("< (k)");
 		labelLessThanKb.setFont(new Font("Tahoma", Font.PLAIN, 9));
@@ -393,7 +481,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		comboAfter.setFont(new Font("Tahoma", Font.PLAIN, 10));
 		comboAfter.setEditable(true);
 		comboAfter.setToolTipText("format:  yyyy/MM/dd HH:mm:ss #coment");
-		comboAfter.setBounds(55, 0, 135, 20);
+		comboAfter.setBounds(60, 0, 135, 20);
 		panelCriteriaParams2.add(comboAfter);
 
 		
@@ -662,7 +750,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		
 		labelTextInFile = new JLabel("find:");
 		labelTextInFile.setToolTipText("buscar texto en fichero");
-		labelTextInFile.setBounds(3, 1, 46, 14);
+		labelTextInFile.setBounds(2, 1, 33, 14);
 		panelPreviewOptions.add(labelTextInFile);
 		
 		botonUp = new JButton("up");
@@ -681,6 +769,13 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		botonDown.setFont(new Font("Tahoma", Font.PLAIN, 9));
 		botonDown.setBounds(43, 36, 47, 23);
 		panelPreviewOptions.add(botonDown);
+		
+		checkboxUpDownText = new JCheckBox("text");
+		checkboxUpDownText.setFont(new Font("Tahoma", Font.PLAIN, 9));
+		checkboxUpDownText.setToolTipText("selected: up and down for both text (search option) and find. Not selected, only up and down for find.");
+		checkboxUpDownText.setSelected(true);
+		checkboxUpDownText.setBounds(45, 1, 50, 14);
+		panelPreviewOptions.add(checkboxUpDownText);
 		botonDown.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				findDown();
@@ -1096,13 +1191,14 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 				lastLookFor=textValue;
 				findTextInJText(textAreaFileText, searchText, textValue,TypeFind.init);
 				
-			} catch (Exception r) {
+			} catch (Throwable r) {
+				textAreaFileText.setText("ERROR opening "+fileInfo+" :: "+r);
 				try {
 					if (is1!=null) {
 						is1.close();
 					}
 				} catch (Exception r2) {
-					textAreaFileText.setText("ERROR opening "+fileInfo+" :: "+r);
+				 //ignore	
 				}
 			}
 			
@@ -1150,7 +1246,13 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		}
 		ArrayList<Integer> starts=new ArrayList<Integer>();
 		for (Highlight highlight:highlighter.getHighlights()) {
-			starts.add(highlight.getStartOffset());
+			if (checkboxUpDownText.isSelected()) { //search in custom text and search global text
+				starts.add(highlight.getStartOffset());
+			} else {
+				if (highlight.getPainter()==customHighlighter) {
+					starts.add(highlight.getStartOffset());
+				}
+			}
 		}
 		Collections.sort(starts);
 		if (typeFind==TypeFind.init) {
@@ -1202,8 +1304,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 			try {
 				jText.getHighlighter().addHighlight(pos, pos+lookFor.length(), customHighlighter2);
 			} catch (BadLocationException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				addError("findTextInJText erro: "+e);
 			}
 		}
 	}
@@ -1292,13 +1393,13 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		
 		String greaterThan=textGreaterThan.getText();
 		String lessThan=textLessThan.getText();
-		boolean zipjar=chckbxZipjar.isSelected();
-		boolean z7=chckbxz.isSelected();
-		boolean rar=chckbxRar.isSelected();
+		boolean zipjar=checkboxZipjar.isSelected();
+		boolean z7=checkbox7z.isSelected();
+		boolean rar=checkboxRar.isSelected();
 		boolean recursive=chechBoxSubdir.isSelected();
 		
 		SearchOptions searchOptions=new SearchOptions(dirValue);
-		searchOptions.setText(textValue);
+		searchOptions.setText(textValue); 
 		
 		if (checkBoxAfter.isSelected()) {
 			try {
@@ -1428,7 +1529,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	}
 
 	@Override
-	public void addFile(FileInfo fileInfo) {
+	public void addFile(final FileInfo fileInfo) {
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
         		filesTableModel.addFileInfo(fileInfo);
@@ -1438,7 +1539,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	}
 
 	@Override
-	public void addError(String err) {
+	public void addError(final String err) {
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
             	appendErrMsg(err);
@@ -1454,7 +1555,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	}
 
 	@Override
-	public void workingInArchive(String archive) {
+	public void workingInArchive(final String archive) {
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
             	if (inProgress) {

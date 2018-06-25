@@ -29,7 +29,12 @@ import com.github.junrar.rarfile.BaseBlock;
 public class HuntFiles  {
 
 	public static void main(String [] s) throws Exception {
-		SearchOptions searchOptions=new SearchOptions(s);
+		SearchOptions searchOptions=null;
+		try {
+			 searchOptions=new SearchOptions(s);
+		} catch (Exception r) {
+			return;
+		}
 		
 		HuntFilesListener huntFilesListener = new HuntFilesListener() {
 			@Override
@@ -54,9 +59,9 @@ public class HuntFiles  {
 			
 		};
 		
-		if (searchOptions.isGui()) {
-			HuntFilesMainWindow.main(s);
-		} else {
+		if (!searchOptions.isConsole()) {
+			HuntFilesMainWindow.main(searchOptions);
+		} else if (searchOptions.isValid()){
 			HuntFiles huntFiles=new HuntFiles(searchOptions,huntFilesListener);
 			String stats=huntFiles.search();
 			System.out.println("search stats:"+stats);

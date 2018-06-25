@@ -34,8 +34,13 @@ public class SearchOptions {
 	private boolean z7=false;
 	private boolean rar=false;
 	private List<String> ignorePaths=null;
+	private boolean valid=false;
 	
-	private boolean gui=false;
+	public boolean isValid() {
+		return valid;
+	}
+
+	private boolean console=false;
 
 
 	public SearchOptions(String dir) {
@@ -45,9 +50,9 @@ public class SearchOptions {
 	public SearchOptions(String [] args) throws Exception {
         Options options = new Options();
 
-        Option guiOpt = new Option("gui", "gui", false, "graphical interface");
-        guiOpt.setRequired(false);
-        options.addOption(guiOpt);
+        Option consoleOpt = new Option("con", "console", false, "execute in console mode (default graphical interface)");
+        consoleOpt.setRequired(false);
+        options.addOption(consoleOpt);
         
         Option dirOpt = new Option("d", "dir", true, "search directory");
         dirOpt.setRequired(false);
@@ -85,7 +90,7 @@ public class SearchOptions {
         lessThanOpt.setRequired(false);
         options.addOption(lessThanOpt);
         
-        Option zipjarOpt = new Option("zip", "zip", false, "search in zip and jar");
+        Option zipjarOpt = new Option("z", "zip", false, "search in zip and jar");
         zipjarOpt.setRequired(false);
         options.addOption(zipjarOpt);
         
@@ -96,6 +101,18 @@ public class SearchOptions {
         Option rarOpt = new Option("rar", "rar", false, "search in rar");
         rarOpt.setRequired(false);
         options.addOption(rarOpt);
+        
+        Option help1Opt = new Option("h", "h", false, "help");
+        help1Opt.setRequired(false);
+        options.addOption(help1Opt);
+        
+        Option help2Opt = new Option("help", "help", false, "help");
+        help2Opt.setRequired(false);
+        options.addOption(help2Opt);
+        
+        Option help3Opt = new Option("ayuda", "ayuda", false, "ayuda");
+        help3Opt.setRequired(false);
+        options.addOption(help3Opt);
         
         Option ignorePathOpt = new Option("i","ignorepath",true,"ignore paths (list of paths to ignore (wildcard *)");
         ignorePathOpt.setArgs(Option.UNLIMITED_VALUES);
@@ -114,7 +131,7 @@ public class SearchOptions {
             throw e;
         }
 
-        gui=cmd.hasOption(guiOpt.getLongOpt());
+        console=cmd.hasOption(consoleOpt.getLongOpt());
         
         setDir(cmd.getOptionValue(dirOpt.getLongOpt()));
         setFilename(cmd.getOptionValue(filenameOpt.getLongOpt(),""));
@@ -149,10 +166,22 @@ public class SearchOptions {
         	setIgnorePaths(paths);
         }
         
+
+        valid=true;
+        if (console && StringUtils.isBlank(getDir())) {
+        	formatter.printHelp("utility-name", options);
+        	System.out.println("In console mode must be set: --dir path");
+        	valid=false;
+        } else {
+        	if (cmd.hasOption(help1Opt.getLongOpt()) || cmd.hasOption(help2Opt.getLongOpt()) || cmd.hasOption(help3Opt.getLongOpt())) {
+        		formatter.printHelp("utility-name", options);
+        	}
+        }
+        
 	}
 	
-	public boolean isGui() {
-		return gui;
+	public boolean isConsole() {
+		return console;
 	}
 
 	private String getStr(String str) {
