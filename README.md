@@ -1,5 +1,8 @@
 # huntfiles
-a tool to search files
+A tool to search files in local directories.
+It can search inside zip, jar, rar and 7z archives.
+Found text is shown highlighted
+
 
 # execute :  
 java -jar dist/huntfiles-0.1-boot.jar
