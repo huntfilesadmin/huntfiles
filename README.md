@@ -1,6 +1,9 @@
 # huntfiles
+
 A tool to search files in local directories.
+
 It can search inside zip, jar, rar and 7z archives.
+
 Found text is shown highlighted
 
 
