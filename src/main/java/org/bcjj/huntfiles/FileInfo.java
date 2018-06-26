@@ -7,16 +7,23 @@ import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
+import org.apache.commons.compress.archivers.sevenz.SevenZFile;
 import org.apache.commons.lang3.StringUtils;
+import org.bcjj.huntfiles.util.SevenZInputStream;
+
+import com.github.junrar.Archive;
+import com.github.junrar.rarfile.FileHeader;
 
 public class FileInfo {
 
 	public enum FileType {
-		File,Zip	
+		File,Zip,Z7,Rar	
 	};
 	
 	File file;
@@ -106,7 +113,37 @@ public class FileInfo {
 			InputStream is=zipFile.getInputStream(zipEntry);
 			return is;
 		}
-		
+		if (fileType==FileType.Z7) {
+			SevenZFile sevenZFile = new SevenZFile(file);
+			/*this way is not working... it doesnt move the sevenZFile.currentEntryIndex
+			Iterator<SevenZArchiveEntry> entries=sevenZFile.getEntries().iterator(); 
+			while (entries.hasNext()) {
+				SevenZArchiveEntry sevenZArchiveEntry=entries.next();
+				if (sevenZArchiveEntry.getName().equals(pathInPackage)) {
+					InputStream is=new SevenZInputStream(sevenZArchiveEntry,sevenZFile);
+					return is;
+				}
+			    
+			}
+			*/
+			SevenZArchiveEntry sevenZArchiveEntry=null;
+			while ((sevenZArchiveEntry =sevenZFile.getNextEntry())!=null) {
+				if (sevenZArchiveEntry.getName().equals(pathInPackage)) {
+					InputStream is=new SevenZInputStream(sevenZArchiveEntry,sevenZFile);
+					return is;
+				}
+			}
+		}
+		if (fileType==FileType.Rar) {
+			Archive rarFile=new Archive(file);
+			List<FileHeader> fileHeaders = rarFile.getFileHeaders();
+			for (FileHeader fileHeader:fileHeaders) {
+				String path=fileHeader.getFileNameString();
+				if (path.equals(pathInPackage)) {
+					return rarFile.getInputStream(fileHeader);
+				}
+			}
+		}
 		return null;
 	}
 	

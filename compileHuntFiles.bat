@@ -10,7 +10,7 @@ rem # mvn dependency:copy-dependencies # copia las dependencias a target/depende
 rem # cd target/
 rem # java -cp huntfiles-0.1.jar HuntFiles
 
-java -jar target/huntfiles-0.1-boot.jar --dir "c:/temp" --text "hello you" --file "*.txt" 
+java -jar target/huntfiles-0.1-boot.jar --dir "c:/temp" --text "hello you" --file "*.txt" --zip
 
 
 

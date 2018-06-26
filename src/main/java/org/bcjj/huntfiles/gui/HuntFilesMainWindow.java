@@ -305,6 +305,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		textPaneError = new JTextPane();
 	
 		frmHuntfiles = new JFrame();
+		frmHuntfiles.setIconImage(Toolkit.getDefaultToolkit().getImage(HuntFilesMainWindow.class.getResource("/org/bcjj/huntfiles/gui/search.png")));
 		frmHuntfiles.setTitle("HuntFiles 1.0");
 		frmHuntfiles.setBounds(100, 100, 637, 446);
 		frmHuntfiles.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -419,15 +420,15 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		panelCriteriaParams2.add(checkboxZipjar);
 		
 		checkboxRar = new JCheckBox("rar"); 
-		checkboxRar.setVisible(false); //TODO: check rar
+		//checkboxRar.setVisible(false); //TODO: check rar
 		checkboxRar.setFont(new Font("Tahoma", Font.PLAIN, 9));
 		checkboxRar.setBounds(52, 37, 39, 23);
 		panelCriteriaParams2.add(checkboxRar);
 		
 		checkbox7z = new JCheckBox("7z"); 
-		checkbox7z.setVisible(false); //TODO: check 7z
 		checkbox7z.setFont(new Font("Tahoma", Font.PLAIN, 9));
 		checkbox7z.setBounds(89, 37, 37, 23);
+		checkbox7z.setToolTipText("7z very slow");
 		panelCriteriaParams2.add(checkbox7z);
 		
 		labelLessThanKb = new JLabel("< (k)");

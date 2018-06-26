@@ -9,21 +9,26 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 
+import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
+import org.apache.commons.compress.archivers.sevenz.SevenZFile;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOCase;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.apache.commons.lang3.StringUtils;
 import org.bcjj.huntfiles.FileInfo.FileType;
 import org.bcjj.huntfiles.gui.HuntFilesMainWindow;
+import org.bcjj.huntfiles.util.SevenZInputStream;
 
 import com.github.junrar.Archive;
 import com.github.junrar.exception.RarException;
 import com.github.junrar.rarfile.BaseBlock;
+import com.github.junrar.rarfile.FileHeader;
 
 
 public class HuntFiles  {
@@ -157,13 +162,41 @@ public class HuntFiles  {
 		}
 	}
 
+	private void searchIn7Z(File file) throws Exception {
+		SevenZFile sevenZFile = new SevenZFile(file);
+		/* this way is not working... it doesnt move the sevenZFile.currentEntryIndex
+		Iterator<SevenZArchiveEntry> entries=sevenZFile.getEntries().iterator();
+		while (entries.hasNext()) {
+			if (stop) {
+				return;
+			}
+			SevenZArchiveEntry sevenZArchiveEntry=entries.next();
+		    if (!sevenZArchiveEntry.isDirectory()) {
+		    	searchIn7ZEntry(sevenZArchiveEntry,sevenZFile,file);
+		    }
+		}
+		*/
+		
+		SevenZArchiveEntry sevenZArchiveEntry=null;
+		while ((sevenZArchiveEntry =sevenZFile.getNextEntry())!=null) {
+			if (stop) {
+				return;
+			}
+			if (!sevenZArchiveEntry.isDirectory()) {
+		    	searchIn7ZEntry(sevenZArchiveEntry,sevenZFile,file);
+		    }
+		}
+	}
 	
 	
-	
+
+
+
+
 	private void searchInZip(File file) throws Exception {
 		ZipFile zipFile=new ZipFile(file);
 		Enumeration<? extends ZipEntry> entries = zipFile.entries();
-		Hashtable<String, Long> h=new Hashtable<String, Long>();
+		//Hashtable<String, Long> h=new Hashtable<String, Long>();
 		while (entries.hasMoreElements()) {
 			if (stop) {
 				return;
@@ -177,9 +210,85 @@ public class HuntFiles  {
 	
 	
 	private void searchInRar(File file) throws Exception {
-		throw new Exception("Rar Search No Implemented yet");
+		Archive rarFile=new Archive(file);
+		List<FileHeader> fileHeaders = rarFile.getFileHeaders();
+		//Hashtable<String, Long> h=new Hashtable<String, Long>();
+		for (FileHeader fileHeader:fileHeaders) {
+			if (stop) {
+				return;
+			}
+		    
+		    if (!fileHeader.isDirectory()) {
+		    	searchInRarEntry(fileHeader,rarFile,file);
+		    }
+		}
 	}	
 	
+	private void searchInRarEntry(FileHeader fileHeader, Archive rarFile, File file) {
+		String path=fileHeader.getFileNameString();
+		
+		if (searchOptions.getFilename()!=null) {
+			String zipPath=fileHeader.getFileNameString();
+			String name=getNameFromPath(zipPath);
+			if (!FilenameUtils.wildcardMatch(name, searchOptions.getFilename(), IOCase.INSENSITIVE)) {
+				return;
+			}
+		}
+		
+		if (searchOptions.getAfter()!=null) {
+			if (fileHeader.getMTime().getTime()<searchOptions.getAfter()) {
+				return;
+			}
+		}
+		
+		if (searchOptions.getBefore()!=null) {
+			if (fileHeader.getMTime().getTime()>searchOptions.getBefore()) {
+				return;
+			}
+		}
+		
+		if (searchOptions.getGreaterThan()!=null) {
+			if (fileHeader.getUnpSize()<searchOptions.getGreaterThan()) {
+				return;
+			}
+		}
+		
+		if (searchOptions.getLessThan()!=null) {
+			if (fileHeader.getUnpSize()>searchOptions.getLessThan()) {
+				return;
+			}
+		}
+		
+		if (searchOptions.getIgnorePaths()!=null && searchOptions.getIgnorePaths().size()>0) {
+			String filePath=path;
+			filePath=StringUtils.replace(filePath, "\\", "/");
+			filePath=StringUtils.replace(filePath, "//", "/");
+			for (String ignorePath:searchOptions.getIgnorePaths()) {
+				if (FilenameUtils.wildcardMatch(filePath, ignorePath, IOCase.INSENSITIVE)) {
+					return;
+				}
+			}
+		}
+		
+		List<Hit> hits=null;
+		if (searchOptions.getText()!=null) {
+			try (InputStream is=  rarFile.getInputStream(fileHeader)) {
+				hits=searchText(is,searchOptions.getText());
+				if (hits.size()==0) {
+					return;
+				}
+			} catch (Exception r) {
+				listener.addError("Error reading "+file+"|"+path+" :: "+r);
+			}
+		}
+		
+		FileInfo fileInfo=new FileInfo(file, path, fileHeader.getUnpSize(), fileHeader.getMTime().getTime() ,hits, FileType.Rar,searchOptions);
+		listener.addFile(fileInfo);
+		return;
+	}
+
+
+
 	private String getNameFromPath(String path) {
 		String name=path;
 		path=StringUtils.replace(path,"\\","/");
@@ -254,6 +363,70 @@ public class HuntFiles  {
 		listener.addFile(fileInfo);
 		return;
 	}
+	
+	private void searchIn7ZEntry(SevenZArchiveEntry sevenZArchiveEntry, SevenZFile sevenZFile, File file) {
+		String path=sevenZArchiveEntry.getName();
+		
+		if (searchOptions.getFilename()!=null) {
+			String zipPath=sevenZArchiveEntry.getName();
+			String name=getNameFromPath(zipPath);
+			if (!FilenameUtils.wildcardMatch(name, searchOptions.getFilename(), IOCase.INSENSITIVE)) {
+				return;
+			}
+		}
+		
+		if (searchOptions.getAfter()!=null) {
+			if (sevenZArchiveEntry.getHasLastModifiedDate() && sevenZArchiveEntry.getLastModifiedDate().getTime()<searchOptions.getAfter()) {
+				return;
+			}
+		}
+		
+		if (searchOptions.getBefore()!=null) {
+			if (sevenZArchiveEntry.getHasLastModifiedDate() &&  sevenZArchiveEntry.getLastModifiedDate().getTime()>searchOptions.getBefore()) {
+				return;
+			}
+		}
+		
+		if (searchOptions.getGreaterThan()!=null) {
+			if (sevenZArchiveEntry.getSize()<searchOptions.getGreaterThan()) {
+				return;
+			}
+		}
+		
+		if (searchOptions.getLessThan()!=null) {
+			if (sevenZArchiveEntry.getSize()>searchOptions.getLessThan()) {
+				return;
+			}
+		}
+		
+		if (searchOptions.getIgnorePaths()!=null && searchOptions.getIgnorePaths().size()>0) {
+			String filePath=path;
+			filePath=StringUtils.replace(filePath, "\\", "/");
+			filePath=StringUtils.replace(filePath, "//", "/");
+			for (String ignorePath:searchOptions.getIgnorePaths()) {
+				if (FilenameUtils.wildcardMatch(filePath, ignorePath, IOCase.INSENSITIVE)) {
+					return;
+				}
+			}
+		}
+		
+		List<Hit> hits=null;
+		if (searchOptions.getText()!=null) {
+			try (InputStream is=new SevenZInputStream(sevenZArchiveEntry,sevenZFile)) {
+				hits=searchText(is,searchOptions.getText());
+				if (hits.size()==0) {
+					return;
+				}
+			} catch (Exception r) {
+				listener.addError("Error reading "+file+"|"+path+" :: "+r);
+			}
+		}
+		
+		FileInfo fileInfo=new FileInfo(file, path, sevenZArchiveEntry.getSize(), sevenZArchiveEntry.getLastModifiedDate().getTime() ,hits, FileType.Z7,searchOptions);
+		listener.addFile(fileInfo);
+		return;
+	}
+	
 	
 	
 	
@@ -342,9 +515,7 @@ public class HuntFiles  {
 
 
 
-	private void searchIn7Z(File file) throws Exception {
-		throw new Exception("7Z search No Implemented yet");
-	}
+
 
 
 
