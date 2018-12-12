@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -137,6 +138,8 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	int filaAnterior=-1;
 	private JTextPane textPaneError;
 	private JButton buttonCopy;
+	private JButton buttonLastModified;
+	private JTextField txtLastModified = new JTextField();
 	private SimpleImagePanel panelImg;
 	private JScrollPane scrollPane;
 	private JTextArea textAreaFileText;
@@ -161,6 +164,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	
 	boolean exclusionsFromSearchOptions=false;
 	private JCheckBox checkboxUpDownText;
+	private JButton button;
 	
 	/**
 	 * Launch the application.
@@ -307,7 +311,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		frmHuntfiles = new JFrame();
 		frmHuntfiles.setIconImage(Toolkit.getDefaultToolkit().getImage(HuntFilesMainWindow.class.getResource("/org/bcjj/huntfiles/gui/search.png")));
 		frmHuntfiles.setTitle("HuntFiles 1.0");
-		frmHuntfiles.setBounds(100, 100, 637, 446);
+		frmHuntfiles.setBounds(100, 100, 637, 545);
 		frmHuntfiles.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		
 		initFileDrop();
@@ -464,11 +468,14 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		buttonStart.setFont(new Font("Tahoma", Font.BOLD, 13));
 		buttonStart.setToolTipText("INICIAR BUSQUEDA");
 		buttonStart.setBounds(132, 39, 100, 19);
+		buttonStart.setMargin(new Insets(2, 2, 2, 2));
 		panelCriteriaParams2.add(buttonStart);
 		
 		buttonStop = new JButton("Stop");
-		buttonStop.setFont(new Font("Tahoma", Font.BOLD, 13));
+		buttonStop.setFont(new Font("Tahoma", Font.BOLD, 12));
 		buttonStop.setBounds(235, 39, 65, 18);
+		buttonStop.setMargin(new Insets(2, 2, 2, 2));
+		buttonStop.setToolTipText("PARAR BUSQUEDA");
 		panelCriteriaParams2.add(buttonStop);
 		buttonStop.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -493,10 +500,10 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		JSplitPane splitPanelResultContainer = new JSplitPane();
 		splitPanelResultContainer.setOrientation(JSplitPane.VERTICAL_SPLIT);
 		panelResultContainer.add(splitPanelResultContainer);
-		splitPanelResultContainer.setDividerLocation(170);
+		splitPanelResultContainer.setDividerLocation(190);
 		
 		JPanel panelResults = new JPanel();
-		panelResults.setPreferredSize(new Dimension(100, 120));
+		panelResults.setPreferredSize(new Dimension(100, 140));
 		splitPanelResultContainer.setLeftComponent(panelResults);
 		panelResults.setLayout(new BorderLayout(0, 0));
 		
@@ -543,7 +550,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		JPanel panelOptions = new JPanel();
 		panelOptions.setBorder(new LineBorder(new Color(0, 0, 0)));
 		panelOptions.setSize(new Dimension(50, 0));
-		panelOptions.setPreferredSize(new Dimension(85, 10));
+		panelOptions.setPreferredSize(new Dimension(105, 10));
 		panelResults.add(panelOptions, BorderLayout.EAST);
 		panelOptions.setLayout(null);
 		
@@ -652,7 +659,29 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 			}
 		});
 		buttonCopy.setBounds(5, 140, 75, 15);
-		panelOptions.add(buttonCopy);		
+		panelOptions.add(buttonCopy);
+		
+		
+		buttonLastModified = new JButton("setTime");
+		buttonLastModified.setFont(new Font("Tahoma", Font.PLAIN, 11));
+		buttonLastModified.setMargin(new Insets(2, 2, 2, 2));
+		buttonLastModified.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				setLastModified();
+			}
+		});
+		buttonLastModified.setBounds(5, 160, 75, 15);
+		panelOptions.add(buttonLastModified);
+		
+		txtLastModified = new JTextField();
+		txtLastModified.setToolTipText("fecha hora yyyy/MM/dd HH:mm:ss");
+		txtLastModified.setFont(new Font("Tahoma", Font.PLAIN, 9));
+		txtLastModified.setText("");
+		txtLastModified.setBounds(5, 175, 75, 15);
+		panelOptions.add(txtLastModified);
+		txtLastModified.setColumns(10);	
+		
+
 		
 		//JPanel panelFilePreview0 = new JPanel();
 		//panelFilePreview0.setPreferredSize(new Dimension(100, 100));
@@ -797,6 +826,51 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 
 	
 	
+	protected void setLastModified() {
+		String fecha=txtLastModified.getText();
+		
+		Date date = null;
+		SimpleDateFormat sdf=null;
+		try {
+			sdf=new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+			date=sdf.parse(fecha);
+		} catch (ParseException e) {
+			sdf=new SimpleDateFormat("yyyy/MM/dd HH:mm");
+			try {
+				date=sdf.parse(fecha);
+			} catch (ParseException e1) {
+				showMessage("ERROR "+fecha+" is not  yyyy/MM/dd HH:mm:ss   or   yyyy/MM/dd HH:mm  "+e);
+				return;
+			}
+		}
+
+		List<FileInfo> files=getSelectedFiles();
+        List<File> listOfFiles = new ArrayList();
+        Set<String> fichs=new HashSet<String>();
+        int errs=0;
+        int oks=0;
+        for (FileInfo fileInfo:files) {
+        	if (!fichs.contains(fileInfo.getFile().getPath())) {
+        		fichs.add(fileInfo.getFile().getPath());
+        		listOfFiles.add(fileInfo.getFile());
+        		fileInfo.getFile().setLastModified(date.getTime());
+        		long verif=fileInfo.getFile().lastModified();
+        		if (verif!=date.getTime()) {
+        			errs++;
+        			appendErrMsg("ERROR setting last modified "+fileInfo.getFile()+" modified on "+sdf.format(new Date(date.getTime()))+" instead of "+sdf.format(date));
+        		} else {
+        			oks++;
+        		}
+        	}
+        }
+        if (errs>0) {
+        	showMessage("ERRORS. See ErrorPane errors:"+errs+"/"+(oks+errs));
+        } else {
+        	showMessage("done!, updated "+oks+" files to "+sdf.format(date));
+        }
+        
+	}
+
 	public int getLineStartIndex(JTextComponent textComp, int lineNumber) {
 	    if (lineNumber == 0) { return 0; }
 	    try {
@@ -1514,15 +1588,15 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 			          {   
 			              if (files.length==1) {
 			            	  File f=files[0];
-			            	  if (f.isDirectory()) {
+			            	  if (f.isDirectory() || f.isFile()) {
 			            		  String dir=f.getAbsolutePath();
 			            		  //comboDirectory.getEditor().setItem(dir);
 			            		  comboDirectory.setSelectedItem(dir);
 			            	  } else {
-			            		  showMessage("drop only 1 directory, not a file");
+			            		  showMessage("drop only a directory or a file");
 			            	  }
 			              } else {
-			            	  showMessage("drop only 1 directory");
+			            	  showMessage("drop only 1 directory or 1 file");
 			            	  
 			              }
 			          }   // end filesDropped
@@ -1565,4 +1639,5 @@ public class HuntFilesMainWindow implements HuntFilesListener {
             }
         });
 	}
+
 }

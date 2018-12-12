@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Hashtable;
@@ -89,7 +90,7 @@ public class HuntFiles  {
 		if (searchOptions==null || searchOptions.getDir()==null) {
 			throw new Exception("Initial Directory is needed");
 		}
-		searchInDir(new File(searchOptions.getDir()));
+		initSearchInDirOrFile(new File(searchOptions.getDir()));
 		return "ok";
 	}
 
@@ -97,10 +98,20 @@ public class HuntFiles  {
 	
 	
 	
-	
+	private void initSearchInDirOrFile(File directory) {
+		if (directory.isFile()) {
+			File file=directory;
+			searchInFile(file.getParentFile(), file);
+		} else if (directory.isDirectory()) {
+			searchInDir(directory);
+		}
+	}
 	
 	
 	private void searchInDir(File directory) {
+		if (Files.isSymbolicLink(directory.toPath())) {
+			return;
+		}
 		File [] files=directory.listFiles();
 		if (files==null) {
 			return;
@@ -111,44 +122,7 @@ public class HuntFiles  {
 				return;
 			}
 			if (file.isFile()) {
-				String ext=FilenameUtils.getExtension(file.getName());
-				if (ext!=null) {
-					if (ext.equalsIgnoreCase("zip") || ext.equalsIgnoreCase("jar") || ext.equalsIgnoreCase("war")) {
-						if (searchOptions.isZipjar()) {
-							try {
-								listener.workingInArchive(file.getPath());
-								searchInZip(file);
-							} catch (Exception r) {
-								listener.addError("ERROR in zipFile "+file+" :: "+r);
-							}
-							listener.workingInArchive(directory.getPath());
-						}
-					} else if (ext.equalsIgnoreCase("7z")) {
-						if (searchOptions.isZ7()) {
-							try {
-								listener.workingInArchive(file.getPath());
-								searchIn7Z(file);
-							} catch (Exception r) {
-								listener.addError("ERROR in zipFile "+file+" :: "+r);
-							}
-							listener.workingInArchive(directory.getPath());
-						}
-					} else if (ext.equalsIgnoreCase("rar")) {
-						if (searchOptions.isRar()) {
-							try {
-								listener.workingInArchive(file.getPath());
-								searchInRar(file);
-							} catch (Exception r) {
-								listener.addError("ERROR in zipFile "+file+" :: "+r);
-							}
-							listener.workingInArchive(directory.getPath());
-						}
-					} else {
-						searchInFile(file,ext.toLowerCase());
-					}
-				} else {
-					searchInFile(file,"txt");
-				}
+				searchInFile(directory, file);
 				//String ext1 = FilenameUtils.getExtension("/path/to/file/foo.txt"); // returns "txt"
 			}
 		}
@@ -157,8 +131,53 @@ public class HuntFiles  {
 				if (stop) {
 					return;
 				}
-				searchInDir(dir);
+				if (dir.isDirectory()) {
+					searchInDir(dir);
+				}
 			}
+		}
+	}
+
+
+
+	private void searchInFile(File directory, File file) {
+		String ext=FilenameUtils.getExtension(file.getName());
+		if (ext!=null) {
+			if (ext.equalsIgnoreCase("zip") || ext.equalsIgnoreCase("jar") || ext.equalsIgnoreCase("war")) {
+				if (searchOptions.isZipjar()) {
+					try {
+						listener.workingInArchive(file.getPath());
+						searchInZip(file);
+					} catch (Exception r) {
+						listener.addError("ERROR in zipFile "+file+" :: "+r);
+					}
+					listener.workingInArchive(directory.getPath());
+				}
+			} else if (ext.equalsIgnoreCase("7z")) {
+				if (searchOptions.isZ7()) {
+					try {
+						listener.workingInArchive(file.getPath());
+						searchIn7Z(file);
+					} catch (Exception r) {
+						listener.addError("ERROR in zipFile "+file+" :: "+r);
+					}
+					listener.workingInArchive(directory.getPath());
+				}
+			} else if (ext.equalsIgnoreCase("rar")) {
+				if (searchOptions.isRar()) {
+					try {
+						listener.workingInArchive(file.getPath());
+						searchInRar(file);
+					} catch (Exception r) {
+						listener.addError("ERROR in zipFile "+file+" :: "+r);
+					}
+					listener.workingInArchive(directory.getPath());
+				}
+			} else {
+				searchInFile(file,ext.toLowerCase());
+			}
+		} else {
+			searchInFile(file,"txt");
 		}
 	}
 

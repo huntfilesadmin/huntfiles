@@ -5,10 +5,10 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib/junit-3.8.1.jar"/>
 	<classpathentry kind="lib" path="lib/commons-cli-1.4.jar" sourcepath="lib/commons-cli-1.4-sources.jar"/>
-	<classpathentry kind="lib" path="lib/commons-compress-1.17.jar" sourcepath="lib/commons-compress-1.17-sources.jar"/>
 	<classpathentry kind="lib" path="lib/commons-io-2.6.jar" sourcepath="lib/commons-io-2.6-sources.jar"/>
 	<classpathentry kind="lib" path="lib/commons-lang3-3.7.jar" sourcepath="lib/commons-lang3-3.7-sources.jar"/>
 	<classpathentry kind="lib" path="lib/xz-1.8.jar" sourcepath="lib/xz-1.8-sources.jar"/>
 	<classpathentry kind="lib" path="lib/junrar-1.0.1.jar" sourcepath="lib/junrar-1.0.1-sources.jar"/>
+	<classpathentry kind="lib" path="lib/commons-compress-1.18.jar" sourcepath="lib/commons-compress-1.18-sources.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
