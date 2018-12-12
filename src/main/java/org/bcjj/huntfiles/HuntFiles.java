@@ -143,6 +143,7 @@ public class HuntFiles  {
 	private void searchInFile(File directory, File file) {
 		String ext=FilenameUtils.getExtension(file.getName());
 		if (ext!=null) {
+			searchInFile(file,ext.toLowerCase());
 			if (ext.equalsIgnoreCase("zip") || ext.equalsIgnoreCase("jar") || ext.equalsIgnoreCase("war")) {
 				if (searchOptions.isZipjar()) {
 					try {
@@ -173,8 +174,6 @@ public class HuntFiles  {
 					}
 					listener.workingInArchive(directory.getPath());
 				}
-			} else {
-				searchInFile(file,ext.toLowerCase());
 			}
 		} else {
 			searchInFile(file,"txt");
@@ -452,8 +451,15 @@ public class HuntFiles  {
 	private void searchInFile(File file, String ext) {
 		
 		if (searchOptions.getFilename()!=null) {
-			if (!FilenameUtils.wildcardMatch(file.getName(), searchOptions.getFilename(), IOCase.INSENSITIVE)) {
-				return;
+			String patron=searchOptions.getFilename();
+			if (patron.indexOf("*")>-1 || patron.indexOf("?")>-1) {
+				if (!FilenameUtils.wildcardMatch(file.getName(), searchOptions.getFilename(), IOCase.INSENSITIVE)) {
+					return;
+				}
+			} else {
+				if (!file.getName().contains(patron)) {
+					return;
+				}
 			}
 		}
 		
@@ -494,6 +500,9 @@ public class HuntFiles  {
 		
 		List<Hit> hits=null;
 		if (searchOptions.getText()!=null) {
+			if (ext.equalsIgnoreCase("zip") || ext.equalsIgnoreCase("jar") || ext.equalsIgnoreCase("war") || ext.equalsIgnoreCase("7z") || ext.equalsIgnoreCase("rar")) {
+				return;
+			}
 			try (InputStream is=new FileInputStream(file)) {
 				hits=searchText(is,searchOptions.getText());
 				if (hits.size()==0) {
