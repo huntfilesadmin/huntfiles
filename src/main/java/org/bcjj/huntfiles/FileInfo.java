@@ -147,17 +147,26 @@ public class FileInfo {
 		return null;
 	}
 	
-	 public String toString() {
-		 String x=""+file;
+	public String toString() {
+		return toString(false);
+	}
+	
+	 public String toString(boolean onlyNames) {
+		 String x="";
+		 if (onlyNames) {
+			 x=x+file.getName();
+		 } else {
+			 x=x+file;
+		 }
 		 if (!pathInPackage.equals("")) {
 			 x=x+"|"+pathInPackage;
 		 }
 		 return x;
 	 }
 	
-	 public String toString(boolean showHits,String hitPrefix) {
+	 public String toString(boolean onlyNames, boolean showHits,String hitPrefix) {
 		 String NL="\r\n";
-		 StringBuilder sb=new StringBuilder(this.toString());
+		 StringBuilder sb=new StringBuilder(this.toString(onlyNames));
 		 sb.append(NL);
 		 if (showHits && hits!=null) {
 			 for (Hit hit:hits) {

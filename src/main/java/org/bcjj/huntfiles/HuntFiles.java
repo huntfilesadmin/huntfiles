@@ -45,7 +45,7 @@ public class HuntFiles  {
 		HuntFilesListener huntFilesListener = new HuntFilesListener() {
 			@Override
 			public void addFile(FileInfo fileInfo) {
-				System.out.println(fileInfo.toString(true,"  > "));
+				System.out.println(fileInfo.toString(false, true,"  > "));
 			}
 
 			@Override

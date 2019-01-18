@@ -148,6 +148,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	
 	private boolean inProgress=false;
 	private JCheckBox chckbxCopyHits;
+	private JCheckBox chckbxCopyOnlyName;
 	private JScrollPane scrollPane_1;
 	private JTextArea textAreaHits;
 	private List<Hit> hitsTextArea;
@@ -165,6 +166,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	boolean exclusionsFromSearchOptions=false;
 	private JCheckBox checkboxUpDownText;
 	private JButton button;
+	private JButton buttonCopyName;
 	
 	/**
 	 * Launch the application.
@@ -311,7 +313,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		frmHuntfiles = new JFrame();
 		frmHuntfiles.setIconImage(Toolkit.getDefaultToolkit().getImage(HuntFilesMainWindow.class.getResource("/org/bcjj/huntfiles/gui/search.png")));
 		frmHuntfiles.setTitle("HuntFiles 1.0");
-		frmHuntfiles.setBounds(100, 100, 637, 545);
+		frmHuntfiles.setBounds(100, 100, 875, 624);
 		frmHuntfiles.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		
 		initFileDrop();
@@ -470,6 +472,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		buttonStart.setBounds(132, 39, 100, 19);
 		buttonStart.setMargin(new Insets(2, 2, 2, 2));
 		panelCriteriaParams2.add(buttonStart);
+		frmHuntfiles.getRootPane().setDefaultButton(buttonStart);
 		
 		buttonStop = new JButton("Stop");
 		buttonStop.setFont(new Font("Tahoma", Font.BOLD, 12));
@@ -500,7 +503,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		JSplitPane splitPanelResultContainer = new JSplitPane();
 		splitPanelResultContainer.setOrientation(JSplitPane.VERTICAL_SPLIT);
 		panelResultContainer.add(splitPanelResultContainer);
-		splitPanelResultContainer.setDividerLocation(190);
+		splitPanelResultContainer.setDividerLocation(210);
 		
 		JPanel panelResults = new JPanel();
 		panelResults.setPreferredSize(new Dimension(100, 140));
@@ -558,7 +561,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		buttonToZip.setMargin(new Insets(2, 2, 2, 2));
 		buttonToZip.setFont(new Font("Tahoma", Font.PLAIN, 11));
 		buttonToZip.setToolTipText("crear zip con los resultados seleccionados");
-		buttonToZip.setBounds(5, 5, 75, 15);
+		buttonToZip.setBounds(5, 5, 95, 15);
 		panelOptions.add(buttonToZip);
 		buttonToZip.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -570,7 +573,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		buttonOpenInExplorer.setMargin(new Insets(2, 2, 2, 2));
 		buttonOpenInExplorer.setToolTipText("abrir en explorer");
 		buttonOpenInExplorer.setFont(new Font("Tahoma", Font.PLAIN, 11));
-		buttonOpenInExplorer.setBounds(5, 25, 75, 15);
+		buttonOpenInExplorer.setBounds(5, 25, 95, 15);
 		panelOptions.add(buttonOpenInExplorer);
 		buttonOpenInExplorer.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -582,7 +585,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		btnDuplicate.setMargin(new Insets(2, 2, 2, 2));
 		btnDuplicate.setToolTipText("crea duplicado");
 		btnDuplicate.setFont(new Font("Tahoma", Font.PLAIN, 11));
-		btnDuplicate.setBounds(5, 45, 75, 15);
+		btnDuplicate.setBounds(5, 45, 95, 15);
 		panelOptions.add(btnDuplicate);
 		btnDuplicate.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -594,7 +597,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		txtDuplicateEnding.setToolTipText("terminacion de duplicado");
 		txtDuplicateEnding.setFont(new Font("Tahoma", Font.PLAIN, 9));
 		txtDuplicateEnding.setText("-ORIG");
-		txtDuplicateEnding.setBounds(5, 60, 75, 15);
+		txtDuplicateEnding.setBounds(5, 60, 95, 15);
 		panelOptions.add(txtDuplicateEnding);
 		txtDuplicateEnding.setColumns(10);
 		
@@ -602,7 +605,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		botonCompare.setToolTipText("elige 2 y comparalos");
 		botonCompare.setMargin(new Insets(2, 2, 2, 2));
 		botonCompare.setFont(new Font("Tahoma", Font.PLAIN, 11));
-		botonCompare.setBounds(5, 80, 57, 15);
+		botonCompare.setBounds(5, 80, 77, 15);
 		panelOptions.add(botonCompare);
 		botonCompare.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -614,7 +617,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		botonOpcionCompare.setToolTipText("settings / ajustes de comparacion");
 		botonOpcionCompare.setFont(new Font("Tahoma", Font.PLAIN, 9));
 		botonOpcionCompare.setMargin(new Insets(1, 1, 2, 1));
-		botonOpcionCompare.setBounds(65, 80, 15, 15);
+		botonOpcionCompare.setBounds(85, 80, 15, 15);
 		panelOptions.add(botonOpcionCompare);
 		botonOpcionCompare.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -623,32 +626,45 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		});
 		
 		buttonOpen = new JButton("open");
+		buttonOpen.setPreferredSize(new Dimension(87, 23));
 		buttonOpen.setFont(new Font("Tahoma", Font.PLAIN, 11));
 		buttonOpen.setMargin(new Insets(2, 2, 2, 2));
 		buttonOpen.setToolTipText("abrir");
-		buttonOpen.setBounds(5, 100, 75, 15);
-		panelOptions.add(buttonOpen);
-		
-		buttonCopyTxt = new JButton("copy txt");
-		buttonCopyTxt.setFont(new Font("Tahoma", Font.PLAIN, 11));
-		buttonCopyTxt.setMargin(new Insets(2, 2, 2, 2));
-		buttonCopyTxt.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				copyFilesTxt();
-			}
-		});
-		buttonCopyTxt.setBounds(5, 120, 57, 15);
-		panelOptions.add(buttonCopyTxt);
-		
-		chckbxCopyHits = new JCheckBox("");
-		chckbxCopyHits.setToolTipText("with hits");
-		chckbxCopyHits.setBounds(60, 120, 20, 15);
-		panelOptions.add(chckbxCopyHits);
+		buttonOpen.setBounds(5, 100, 95, 15);
 		buttonOpen.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				openFile();
 			}
 		});
+		panelOptions.add(buttonOpen);
+		
+		
+		
+		chckbxCopyOnlyName = new JCheckBox("");
+		chckbxCopyOnlyName.setToolTipText("only name (no path)");
+		chckbxCopyOnlyName.setBounds(1, 120, 19, 15);
+		chckbxCopyOnlyName.setMargin(new Insets(2, 2, 2, 2));
+		panelOptions.add(chckbxCopyOnlyName);
+		
+		buttonCopyTxt = new JButton("copy path");
+		buttonCopyTxt.setFont(new Font("Tahoma", Font.PLAIN, 11));
+		buttonCopyTxt.setMargin(new Insets(2, 1, 2, 2));
+		buttonCopyTxt.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				copyFilesTxt();
+			}
+		});
+		buttonCopyTxt.setBounds(20, 120, 61, 15);
+		panelOptions.add(buttonCopyTxt);
+		
+
+		
+		
+		chckbxCopyHits = new JCheckBox("");
+		chckbxCopyHits.setToolTipText("with hits");
+		chckbxCopyHits.setBounds(80, 120, 20, 15);
+		panelOptions.add(chckbxCopyHits);
+
 		
 		buttonCopy = new JButton("copy");
 		buttonCopy.setFont(new Font("Tahoma", Font.PLAIN, 11));
@@ -658,8 +674,10 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 				copyFiles();
 			}
 		});
-		buttonCopy.setBounds(5, 140, 75, 15);
+		buttonCopy.setBounds(5, 140, 95, 15);
 		panelOptions.add(buttonCopy);
+		
+
 		
 		
 		buttonLastModified = new JButton("setTime");
@@ -670,16 +688,17 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 				setLastModified();
 			}
 		});
-		buttonLastModified.setBounds(5, 160, 75, 15);
+		buttonLastModified.setBounds(5, 160, 95, 15);
 		panelOptions.add(buttonLastModified);
 		
 		txtLastModified = new JTextField();
 		txtLastModified.setToolTipText("fecha hora yyyy/MM/dd HH:mm:ss");
 		txtLastModified.setFont(new Font("Tahoma", Font.PLAIN, 9));
 		txtLastModified.setText("");
-		txtLastModified.setBounds(5, 175, 75, 15);
+		txtLastModified.setBounds(5, 175, 95, 15);
 		panelOptions.add(txtLastModified);
 		txtLastModified.setColumns(10);	
+		
 		
 
 		
@@ -944,10 +963,11 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	
 	protected void copyFilesTxt() {
 		boolean withHits=chckbxCopyHits.isSelected();
+		boolean onlyNames=chckbxCopyOnlyName.isSelected();
 		List<FileInfo> files=getSelectedFiles();
 		StringBuilder sb=new StringBuilder();
 		for (FileInfo fileInfo:files) {
-			sb.append(fileInfo.toString(withHits,"  > "));
+			sb.append(fileInfo.toString(onlyNames,withHits,"  > "));
 		}
 		Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
 		StringSelection stringSelection = new StringSelection(sb.toString());
@@ -1226,6 +1246,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 			fileInfo=filesTableModel.getFileInfo(row);	
 			System.out.println(" SEL "+fileInfo);
 			preview(fileInfo);
+			tableFiles.requestFocus();
 		} else {
 			System.out.println(" NO SEL ");
 			preview(null);
@@ -1268,12 +1289,12 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 				
 			} catch (Throwable r) {
 				textAreaFileText.setText("ERROR opening "+fileInfo+" :: "+r);
+			}
+			if (is1!=null) {
 				try {
-					if (is1!=null) {
-						is1.close();
-					}
+					is1.close();
 				} catch (Exception r2) {
-				 //ignore	
+					//ignore	
 				}
 			}
 			
@@ -1283,10 +1304,10 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 				panelImg.setImageInputStream(is2);
 			} catch (Exception e) {
 				System.out.println("Error panelImg "+e);
+			}
+			if (is2!=null) {
 				try {
-					if (is2!=null) {
-						is2.close();
-					}
+					is2.close();
 				} catch (Exception r) {
 					//ignore
 				}
@@ -1639,5 +1660,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
             }
         });
 	}
+
+
 
 }
