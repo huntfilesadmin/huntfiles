@@ -23,6 +23,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -64,6 +65,7 @@ import javax.swing.text.JTextComponent;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.SystemUtils;
 import org.bcjj.huntfiles.FileInfo;
 import org.bcjj.huntfiles.Hit;
 import org.bcjj.huntfiles.HuntFiles;
@@ -82,6 +84,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 public class HuntFilesMainWindow implements HuntFilesListener {
+
 
 	int MAX_COMBO_PREFERENCES=15;
 	
@@ -139,7 +142,8 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	private JTextPane textPaneError;
 	private JButton buttonCopy;
 	private JButton buttonLastModified;
-	private JTextField txtLastModified = new JTextField();
+	private JButton buttonEmpty;
+	private JTextField txtLastModified;
 	private SimpleImagePanel panelImg;
 	private JScrollPane scrollPane;
 	private JTextArea textAreaFileText;
@@ -153,6 +157,10 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	private JTextArea textAreaHits;
 	private List<Hit> hitsTextArea;
 
+	private JCheckBox chechBoxAnsi;
+	private JCheckBox chechBoxUtf8;
+	private JCheckBox chechBoxUtf16;	
+	
 	HuntFiles huntFiles=null;
 	private JButton buttonCopyTxt;
 	
@@ -395,7 +403,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		panelCriteriaParameters.add(comboFileName, BorderLayout.NORTH);
 		
 		JPanel panelCriteriaParams2 = new JPanel();
-		panelCriteriaParams2.setPreferredSize(new Dimension(300, 10));
+		panelCriteriaParams2.setPreferredSize(new Dimension(380, 10));
 		panelCriteria.add(panelCriteriaParams2, BorderLayout.EAST);
 		panelCriteriaParams2.setLayout(null);
 		
@@ -494,6 +502,28 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		comboAfter.setToolTipText("format:  yyyy/MM/dd HH:mm:ss #coment");
 		comboAfter.setBounds(60, 0, 135, 20);
 		panelCriteriaParams2.add(comboAfter);
+		
+
+		
+		chechBoxAnsi = new JCheckBox("ANSI");
+		chechBoxAnsi.setSelected(true);
+		chechBoxAnsi.setFont(new Font("Tahoma", Font.PLAIN, 9));
+		chechBoxAnsi.setToolTipText("buscar texto usando codificacion ANSI (ISO_8859_1) ");
+		chechBoxAnsi.setBounds(306, -4, 49, 23);
+		panelCriteriaParams2.add(chechBoxAnsi);
+		
+		chechBoxUtf8 = new JCheckBox("UTF-8");
+		chechBoxUtf8.setSelected(true);
+		chechBoxUtf8.setFont(new Font("Tahoma", Font.PLAIN, 9));
+		chechBoxUtf8.setToolTipText("buscar texto usando codificacion UTF-8 (UTF_8)");
+		chechBoxUtf8.setBounds(306, 17, 58, 23);
+		panelCriteriaParams2.add(chechBoxUtf8);
+		
+		chechBoxUtf16 = new JCheckBox("UTF-16");
+		chechBoxUtf16.setFont(new Font("Tahoma", Font.PLAIN, 9));
+		chechBoxUtf16.setToolTipText("buscar texto usando codificacion UTF-16 (UTF_16, UTF_16BE, UTF_16LE)");
+		chechBoxUtf16.setBounds(306, 37, 58, 23);
+		panelCriteriaParams2.add(chechBoxUtf16);
 
 		
 		JPanel panelResultContainer = new JPanel();
@@ -503,7 +533,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		JSplitPane splitPanelResultContainer = new JSplitPane();
 		splitPanelResultContainer.setOrientation(JSplitPane.VERTICAL_SPLIT);
 		panelResultContainer.add(splitPanelResultContainer);
-		splitPanelResultContainer.setDividerLocation(210);
+		splitPanelResultContainer.setDividerLocation(240);
 		
 		JPanel panelResults = new JPanel();
 		panelResults.setPreferredSize(new Dimension(100, 140));
@@ -699,8 +729,18 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		panelOptions.add(txtLastModified);
 		txtLastModified.setColumns(10);	
 		
+		buttonEmpty = new JButton("empty");
+		buttonEmpty.setToolTipText("vaciar fichero");
+		buttonEmpty.setFont(new Font("Tahoma", Font.PLAIN, 11));
+		buttonEmpty.setMargin(new Insets(2, 2, 2, 2));
+		buttonEmpty.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				emptyFiles();
+			}
+		});
+		buttonEmpty.setBounds(5, 195, 95, 15);
+		panelOptions.add(buttonEmpty);
 		
-
 		
 		//JPanel panelFilePreview0 = new JPanel();
 		//panelFilePreview0.setPreferredSize(new Dimension(100, 100));
@@ -996,7 +1036,38 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		});
 	}
 	
-	
+	protected void emptyFiles() {
+		List<FileInfo> files=getSelectedFiles();
+
+        List<File> listOfFiles = new ArrayList();
+        Set<String> fichs=new HashSet<String>();
+        for (FileInfo fileInfo:files) {
+        	if (!fichs.contains(fileInfo.getFile().getPath())) {
+        		fichs.add(fileInfo.getFile().getPath());
+        		listOfFiles.add(fileInfo.getFile());
+        	}
+        }
+        
+		if (askConfirm("empty "+listOfFiles.size()+" files")) {
+			int errores=0;
+			String x="";
+			for (File f:listOfFiles) {
+				FileWriter fw;
+				try {
+					fw = new FileWriter(f);
+					fw.close();
+				} catch (IOException e) {
+					errores++;
+					x=x+f.getName()+";";
+				}
+			}
+			if (errores>0) {
+				showMessage(""+errores+" errors :: "+x);
+			} else {
+				showMessage("done");
+			}
+		}
+	}
 	
 	public static String askForString(String message,String value) {
 		String reply = JOptionPane.showInputDialog(message,value);
@@ -1028,7 +1099,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	public String askForCombo(String message,FieldType fieldType,String value) {
 		JComboBox<String> combo=new JComboBox<>();
 		DefaultComboBoxModel<String> model = new DefaultComboBoxModel<String>();
-		loadPreference(model, fieldType);
+		loadPreference(model, fieldType,false);
 		combo.setModel(model);
 		combo.setEditable(true);
 		combo.setSelectedItem(value);
@@ -1154,7 +1225,22 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		if (files.size()==1) {
 			File f=files.get(0).getFile();
 			try {
-				Desktop.getDesktop().open(f.getParentFile());
+
+				if (SystemUtils.IS_OS_WINDOWS) {
+					String path = f.getCanonicalPath();
+
+					ProcessBuilder pb = new ProcessBuilder("explorer.exe", "/select," + path);
+					pb.redirectError();
+					Process proc = pb.start();	
+					
+				} else if (Desktop.isDesktopSupported()) {
+				    Desktop desktop = Desktop.getDesktop();
+				    //desktop.browse(f.toURI()); 
+				    desktop.open(f.getParentFile());
+				} else {
+					showMessage("not supported");
+				}
+				
 			} catch (Exception e) {
 				showMessage("ERROR "+e);
 			}
@@ -1280,36 +1366,37 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 			InputStream is1=null;
 			try {
 				is1=fileInfo.getInputStream();
-				text=getStringFromInputStream(is1);
+				Charset charset=fileInfo.getHitsPreferredCharset();
+				text=getStringFromInputStream(is1,charset);
 				textAreaFileText.setText(text);
 				String searchText=fileInfo.getSearchOptions().getText();
 				String textValue=getComboValue(comboFindTextPreview, findTextModel,FieldType.ComboFindText);
 				lastLookFor=textValue;
 				findTextInJText(textAreaFileText, searchText, textValue,TypeFind.init);
-				
 			} catch (Throwable r) {
 				textAreaFileText.setText("ERROR opening "+fileInfo+" :: "+r);
-			}
-			if (is1!=null) {
-				try {
-					is1.close();
-				} catch (Exception r2) {
-					//ignore	
+			} finally {
+				if (is1!=null) {
+					try {
+						is1.close();
+					} catch (Exception r2) {
+						//ignore	
+					}
 				}
 			}
-			
 			InputStream is2=null;
 			try {
 				is2=fileInfo.getInputStream();
 				panelImg.setImageInputStream(is2);
 			} catch (Exception e) {
 				System.out.println("Error panelImg "+e);
-			}
-			if (is2!=null) {
-				try {
-					is2.close();
-				} catch (Exception r) {
-					//ignore
+			} finally {
+				if (is2!=null) {
+					try {
+						is2.close();
+					} catch (Exception r) {
+						//ignore
+					}
 				}
 			}
 		}
@@ -1405,7 +1492,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		}
 	}
 
-	public String getStringFromInputStream(InputStream inputStream) throws IOException {
+	public String getStringFromInputStream(InputStream inputStream,Charset charset) throws IOException {
 		//https://stackoverflow.com/questions/309424/read-convert-an-inputstream-to-a-string
 		//most efficient way 8: (Ways to convert an InputStream to a String)
 		ByteArrayOutputStream result = new ByteArrayOutputStream();
@@ -1415,7 +1502,10 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		    result.write(buffer, 0, length);
 		}
 		// StandardCharsets.UTF_8.name() > JDK 7
-		return result.toString(); //"UTF-8");
+		if (charset==null) {
+			return result.toString(); //"UTF-8");
+		}
+		return result.toString(charset.name()); //"UTF-8");
 	}
 	
 	
@@ -1438,7 +1528,10 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		return value;
 	}
 
-	private void loadPreference(DefaultComboBoxModel<String> modelo, FieldType fieldType) {
+	private void loadPreference(DefaultComboBoxModel<String> modelo, FieldType fieldType,boolean leaveBlank) {
+		if (leaveBlank) {
+			modelo.addElement("");
+		}
 		try (BufferedReader br = new BufferedReader(new FileReader(getPreferenceFile(fieldType)))) {
 			String lin=null;
 			while ((lin=br.readLine())!=null) {
@@ -1456,7 +1549,9 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		try (FileWriter fw = new FileWriter(getPreferenceFile(fieldType))) {
 			for (int i=0;i<modelo.getSize();i++) {
 				String x=modelo.getElementAt(i);
-				fw.write(x+NL);
+				if (!StringUtils.isBlank(x)) {
+					fw.write(x+NL);
+				}
 			}
 		} catch (IOException e) {
 			appendErrMsg("Error saving preferences "+fieldType.name()+" :: "+e);
@@ -1497,6 +1592,10 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		SearchOptions searchOptions=new SearchOptions(dirValue);
 		searchOptions.setText(textValue); 
 		
+		boolean isAnsi=chechBoxAnsi.isSelected();
+		boolean isUtf8=chechBoxUtf8.isSelected();
+		boolean isUtf16=chechBoxUtf16.isSelected();
+		
 		if (checkBoxAfter.isSelected()) {
 			try {
 				searchOptions.setAfter(afterValue);
@@ -1521,6 +1620,10 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		searchOptions.setZ7(z7);
 		searchOptions.setZipjar(zipjar);
 		searchOptions.setIgnorePaths(exclusions);
+		searchOptions.setSearchAnsi(isAnsi);
+		searchOptions.setSearchUtf8(isUtf8);
+		searchOptions.setSearchUtf16(isUtf16);
+		
 		
 		filesTableModel.clearFiles();
 		filesTableModel.fireTableDataChanged();
@@ -1575,31 +1678,31 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 
 	private DefaultComboBoxModel<String> createTextModel() {
 		textModel= new DefaultComboBoxModel<String>();
-		loadPreference(textModel, FieldType.ComboText);
+		loadPreference(textModel, FieldType.ComboText,true);
 		return textModel;
 	}
 
 	private DefaultComboBoxModel<String> createDirectoryModel() {
 		directoryModel= new DefaultComboBoxModel<String>();
-		loadPreference(directoryModel, FieldType.ComboDirectory);
+		loadPreference(directoryModel, FieldType.ComboDirectory,false);
 		return directoryModel;
 	}
 	
 	private DefaultComboBoxModel<String> createFileNameModel() {
 		fileNameModel = new DefaultComboBoxModel<String>();
-		loadPreference(fileNameModel, FieldType.ComboFileName);
+		loadPreference(fileNameModel, FieldType.ComboFileName,false);
 		return fileNameModel;
 	}
 	
 	private DefaultComboBoxModel<String> createAfterModel() {
 		afterModel = new DefaultComboBoxModel<String>();
-		loadPreference(afterModel, FieldType.ComboAfter);
+		loadPreference(afterModel, FieldType.ComboAfter,false);
 		return afterModel;
 	}
 	
 	private DefaultComboBoxModel<String> createFindTextModel() {
 		findTextModel = new DefaultComboBoxModel<String>();
-		loadPreference(findTextModel, FieldType.ComboFindText);
+		loadPreference(findTextModel, FieldType.ComboFindText,false);
 		return findTextModel;
 	}
 	
@@ -1660,7 +1763,4 @@ public class HuntFilesMainWindow implements HuntFilesListener {
             }
         });
 	}
-
-
-
 }

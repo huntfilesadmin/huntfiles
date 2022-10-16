@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -15,6 +16,7 @@ import java.util.zip.ZipFile;
 import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
 import org.apache.commons.compress.archivers.sevenz.SevenZFile;
 import org.apache.commons.lang3.StringUtils;
+import org.bcjj.huntfiles.HuntFiles.SearchResult;
 import org.bcjj.huntfiles.util.SevenZInputStream;
 
 import com.github.junrar.Archive;
@@ -26,16 +28,16 @@ public class FileInfo {
 		File,Zip,Z7,Rar	
 	};
 	
-	File file;
-	String name;
-	String pathInPackage;
-	String fechMod; 
-	Long size;
-	FileType fileType;
-	SearchOptions searchOptions;
+	private File file;
+	private String name;
+	private String pathInPackage;
+	private String fechMod; 
+	private Long size;
+	private FileType fileType;
+	private SearchOptions searchOptions;
+	private SearchResult searchResult=null;
 	
-	List<Hit> hits=null;
-	public FileInfo(File file, String pathInPackage, Long sizeInPackage, Long dateInPackage, List<Hit> hits, FileType fileType,SearchOptions searchOptions) {
+	public FileInfo(File file, String pathInPackage, Long sizeInPackage, Long dateInPackage, SearchResult searchResult, FileType fileType,SearchOptions searchOptions) {
 		super();
 		this.file = file;
 		this.fileType=fileType;
@@ -71,7 +73,7 @@ public class FileInfo {
 			pathInPackage="";
 		}
 		this.pathInPackage = pathInPackage;
-		this.hits=hits;
+		this.searchResult=searchResult;
 	}
 	
 	public SearchOptions getSearchOptions() {
@@ -98,8 +100,18 @@ public class FileInfo {
 		return pathInPackage;
 	}
 
+	public Charset getHitsPreferredCharset() {
+		if (searchResult==null) {
+			return null;
+		}
+		return searchResult.getPreferredCharset();
+	}
+	
 	public List<Hit> getHits() {
-		return hits;
+		if (searchResult==null) {
+			return new ArrayList<>();
+		}
+		return searchResult.getHits();
 	}
 
 	public InputStream getInputStream() throws Exception {
@@ -168,8 +180,8 @@ public class FileInfo {
 		 String NL="\r\n";
 		 StringBuilder sb=new StringBuilder(this.toString(onlyNames));
 		 sb.append(NL);
-		 if (showHits && hits!=null) {
-			 for (Hit hit:hits) {
+		 if (showHits && searchResult!=null) {
+			 for (Hit hit:getHits()) {
 				 sb.append(hitPrefix).append(hit).append(NL);
 			 }
 		 }

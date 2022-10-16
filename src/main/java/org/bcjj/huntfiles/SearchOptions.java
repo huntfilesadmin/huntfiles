@@ -33,9 +33,18 @@ public class SearchOptions {
 	private boolean zipjar=false;
 	private boolean z7=false;
 	private boolean rar=false;
+	
 	private List<String> ignorePaths=null;
 	private boolean valid=false;
 	
+	private boolean searchAnsi=false;
+	private boolean searchUtf8=false;
+	private boolean searchUtf16=false;
+	
+	
+	
+
+
 	public boolean isValid() {
 		return valid;
 	}
@@ -101,6 +110,18 @@ public class SearchOptions {
         Option rarOpt = new Option("rar", "rar", false, "search in rar");
         rarOpt.setRequired(false);
         options.addOption(rarOpt);
+
+        Option utf16 = new Option("utf16", "utf16", false, "search using utf16 (default using ansi and utf8)");
+        utf16.setRequired(false);
+        options.addOption(utf16);        
+
+        Option noAnsi = new Option("na", "no_ansi", false, "search without using ansi");
+        noAnsi.setRequired(false);
+        options.addOption(noAnsi);   
+        
+        Option noUtf8 = new Option("nu8", "no_utf8", false, "search without using ansi utf8");
+        noUtf8.setRequired(false);
+        options.addOption(noUtf8);           
         
         Option help1Opt = new Option("h", "h", false, "help");
         help1Opt.setRequired(false);
@@ -159,6 +180,21 @@ public class SearchOptions {
         if (cmd.hasOption(rarOpt.getLongOpt())) {
         	setRar(true);
         }
+        
+        setSearchAnsi(true);
+        if (cmd.hasOption(noAnsi.getLongOpt())) {
+        	setSearchAnsi(false);
+        }        
+        
+        setSearchUtf8(true);
+        if (cmd.hasOption(noUtf8.getLongOpt())) {
+        	setSearchUtf8(false);
+        }  
+        
+        setSearchUtf16(false);
+        if (cmd.hasOption(utf16.getLongOpt())) {
+        	setSearchUtf16(true);
+        }          
 
         String [] ignorePaths=cmd.getOptionValues(ignorePathOpt.getLongOpt()); 
         if (ignorePaths!=null) {
@@ -347,6 +383,30 @@ public class SearchOptions {
 	public void setRar(boolean rar) {
 		this.rar = rar;
 	}
+	
+	public boolean isSearchAnsi() {
+		return searchAnsi;
+	}
+
+	public void setSearchAnsi(boolean searchAnsi) {
+		this.searchAnsi = searchAnsi;
+	}
+
+	public boolean isSearchUtf8() {
+		return searchUtf8;
+	}
+
+	public void setSearchUtf8(boolean searchUtf8) {
+		this.searchUtf8 = searchUtf8;
+	}
+
+	public boolean isSearchUtf16() {
+		return searchUtf16;
+	}
+
+	public void setSearchUtf16(boolean searchUtf16) {
+		this.searchUtf16 = searchUtf16;
+	}	
 	
 	public List<String> getIgnorePaths() {
 		return ignorePaths;
