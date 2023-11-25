@@ -51,6 +51,8 @@ import java.io.Reader;
  * @author  rharder@users.sf.net
  * @version 1.1.1
  */
+
+
 public class FileDrop
 {
     private transient javax.swing.border.Border normalBorder;
@@ -302,6 +304,8 @@ public class FileDrop
                     // over the drag target.
                 }   // end dragOver
 
+                
+                @java.lang.SuppressWarnings("java:S4507")  //Delivering code in production with debug features activated is security-sensitive (Loggers should be used (instead of printStackTrace) to print throwables)
                 public void drop( java.awt.dnd.DropTargetDropEvent evt )
                 {   log( out, "FileDrop: drop event." );
                     try
@@ -468,7 +472,7 @@ public class FileDrop
      }
      // END 2007-09-12 Nathan Blomquist -- Linux (KDE/Gnome) support added.
      
-    
+    @java.lang.SuppressWarnings("java:S4507")  //Delivering code in production with debug features activated is security-sensitive (Loggers should be used (instead of printStackTrace) to print throwables)
     private void makeDropTarget( final java.io.PrintStream out, final java.awt.Component c, boolean recursive )
     {
         // Make drop target

@@ -66,6 +66,8 @@ import javax.swing.text.JTextComponent;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
+import org.bcjj.huntfiles.CloseableInputStream;
+import org.bcjj.huntfiles.CloseableInputStream.PreCloseableInputStream;
 import org.bcjj.huntfiles.FileInfo;
 import org.bcjj.huntfiles.Hit;
 import org.bcjj.huntfiles.HuntFiles;
@@ -160,6 +162,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	private JCheckBox chechBoxAnsi;
 	private JCheckBox chechBoxUtf8;
 	private JCheckBox chechBoxUtf16;	
+	private JCheckBox chckbxRegex;
 	
 	HuntFiles huntFiles=null;
 	private JButton buttonCopyTxt;
@@ -179,6 +182,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	/**
 	 * Launch the application.
 	 */
+	@java.lang.SuppressWarnings("java:S4507")  //Delivering code in production with debug features activated is security-sensitive (Loggers should be used (instead of printStackTrace) to print throwables)
 	public static void main(String[] args) {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
@@ -192,6 +196,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		});
 	}
 
+	@java.lang.SuppressWarnings("java:S4507")  //Delivering code in production with debug features activated is security-sensitive (Loggers should be used (instead of printStackTrace) to print throwables)
 	public static void main(final SearchOptions searchOptions) {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
@@ -275,8 +280,8 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		if (StringUtils.isNotBlank(searchOptions.getFilename())) {
 			comboFileName.setSelectedItem(searchOptions.getFilename());
 		}
-		if (StringUtils.isNotBlank(searchOptions.getText())) {
-			comboText.setSelectedItem(searchOptions.getText());
+		if (StringUtils.isNotBlank(searchOptions.getOriginalText())) {
+			comboText.setSelectedItem(searchOptions.getOriginalText());
 		}
 		if (searchOptions.getAfter()!=null) {
 			SimpleDateFormat sdf=new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
@@ -373,6 +378,23 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		chechBoxSubdir.setToolTipText("subdir");
 		chechBoxSubdir.setBounds(50, 40, 20, 15);
 		panelCriteriaLabel.add(chechBoxSubdir);
+		
+		chckbxRegex = new JCheckBox("");
+		chckbxRegex.setToolTipText("regular expresion");
+		chckbxRegex.setBounds(50, 21, 20, 15);
+		panelCriteriaLabel.add(chckbxRegex);
+		
+		JButton botonTextRegexp = new JButton("T");
+		botonTextRegexp.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				abrirTestRegularExpresion();
+			}
+		});
+		botonTextRegexp.setToolTipText("test Regular Expresion");
+		botonTextRegexp.setMargin(new Insets(2, 2, 2, 2));
+		botonTextRegexp.setFont(new Font("Tahoma", Font.PLAIN, 11));
+		botonTextRegexp.setBounds(70, 21, 15, 15);
+		panelCriteriaLabel.add(botonTextRegexp);
 		
 		JPanel panelCriteriaParameters = new JPanel();
 		panelCriteria.add(panelCriteriaParameters, BorderLayout.CENTER);
@@ -885,6 +907,11 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 
 	
 	
+	protected void abrirTestRegularExpresion() {
+		TestRegExp t=new TestRegExp();
+		t.setVisible(true);
+	}
+
 	protected void setLastModified() {
 		String fecha=txtLastModified.getText();
 		
@@ -912,9 +939,9 @@ public class HuntFilesMainWindow implements HuntFilesListener {
         	if (!fichs.contains(fileInfo.getFile().getPath())) {
         		fichs.add(fileInfo.getFile().getPath());
         		listOfFiles.add(fileInfo.getFile());
-        		fileInfo.getFile().setLastModified(date.getTime());
+        		boolean hecho=fileInfo.getFile().setLastModified(date.getTime());
         		long verif=fileInfo.getFile().lastModified();
-        		if (verif!=date.getTime()) {
+        		if (verif!=date.getTime() || !hecho) {
         			errs++;
         			appendErrMsg("ERROR setting last modified "+fileInfo.getFile()+" modified on "+sdf.format(new Date(date.getTime()))+" instead of "+sdf.format(date));
         		} else {
@@ -1275,8 +1302,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	        } catch (Exception r) {
 	        	//ignore
 	        }
-	        try {
-	            ZipOutputStream outputStream = new ZipOutputStream(new FileOutputStream(zipFile));
+	        try (ZipOutputStream outputStream = new ZipOutputStream(new FileOutputStream(zipFile))) {
 	            for (File file:listOfFiles) {
 	            	File parent=file;
 	            	while (parent.getParentFile()!=null) {
@@ -1292,7 +1318,6 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 	                outputStream.write(bytes, 0, bytes.length);
 	                outputStream.closeEntry();
 	            };
-	            outputStream.close();
 	        } catch (Exception e) {
 	        	showMessage("ERROR making zip "+zip+" :: "+e);
 	        }
@@ -1346,11 +1371,11 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 			textAreaFileText.setText("");
 			findTextInJText(textAreaFileText,"no","no",TypeFind.init);
 			textAreaHits.setText("");
-			hitsTextArea=new ArrayList<Hit>();
+			hitsTextArea=new ArrayList<>();
 			try {
 				panelImg.setImageInputStream(null);
 			} catch (Exception e) {
-				
+				//ignorar
 			}
 		} else {
 			StringBuilder hits=new StringBuilder();
@@ -1363,42 +1388,25 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 			textAreaHits.setText(hits.toString());
 			
 			String text="";
-			InputStream is1=null;
-			try {
-				is1=fileInfo.getInputStream();
+
+			try (CloseableInputStream closeableInputStream=new CloseableInputStream(fileInfo.getPreCloseableInputStream())) {
+				InputStream is1=closeableInputStream.getInputStream();
 				Charset charset=fileInfo.getHitsPreferredCharset();
 				text=getStringFromInputStream(is1,charset);
 				textAreaFileText.setText(text);
-				String searchText=fileInfo.getSearchOptions().getText();
+				String searchText=fileInfo.getSearchOptions().getOriginalText();
 				String textValue=getComboValue(comboFindTextPreview, findTextModel,FieldType.ComboFindText);
 				lastLookFor=textValue;
 				findTextInJText(textAreaFileText, searchText, textValue,TypeFind.init);
 			} catch (Throwable r) {
 				textAreaFileText.setText("ERROR opening "+fileInfo+" :: "+r);
-			} finally {
-				if (is1!=null) {
-					try {
-						is1.close();
-					} catch (Exception r2) {
-						//ignore	
-					}
-				}
-			}
-			InputStream is2=null;
-			try {
-				is2=fileInfo.getInputStream();
+			} 
+			try (CloseableInputStream closeableInputStream2=new CloseableInputStream(fileInfo.getPreCloseableInputStream())) {
+				InputStream is2=closeableInputStream2.getInputStream();
 				panelImg.setImageInputStream(is2);
 			} catch (Exception e) {
 				System.out.println("Error panelImg "+e);
-			} finally {
-				if (is2!=null) {
-					try {
-						is2.close();
-					} catch (Exception r) {
-						//ignore
-					}
-				}
-			}
+			} 
 		}
 	}
 	
@@ -1589,12 +1597,28 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 		boolean rar=checkboxRar.isSelected();
 		boolean recursive=chechBoxSubdir.isSelected();
 		
-		SearchOptions searchOptions=new SearchOptions(dirValue);
-		searchOptions.setText(textValue); 
-		
 		boolean isAnsi=chechBoxAnsi.isSelected();
 		boolean isUtf8=chechBoxUtf8.isSelected();
 		boolean isUtf16=chechBoxUtf16.isSelected();
+		
+		boolean regexp=chckbxRegex.isSelected();
+		
+		SearchOptions searchOptions=new SearchOptions(dirValue);
+		searchOptions.setText(textValue); 
+		searchOptions.setIsRegExp(regexp);
+		
+		searchOptions.setFilename(filenameValue);
+		searchOptions.setGreater(greaterThan);
+		searchOptions.setLessThan(lessThan);
+		searchOptions.setRar(rar);
+		searchOptions.setRecursive(recursive);
+		searchOptions.setZ7(z7);
+		searchOptions.setZipjar(zipjar);
+		searchOptions.setIgnorePaths(exclusions);
+		searchOptions.setSearchAnsi(isAnsi);
+		searchOptions.setSearchUtf8(isUtf8);
+		searchOptions.setSearchUtf16(isUtf16);
+		
 		
 		if (checkBoxAfter.isSelected()) {
 			try {
@@ -1612,17 +1636,7 @@ public class HuntFilesMainWindow implements HuntFilesListener {
 				return;
 			}
 		}
-		searchOptions.setFilename(filenameValue);
-		searchOptions.setGreater(greaterThan);
-		searchOptions.setLessThan(lessThan);
-		searchOptions.setRar(rar);
-		searchOptions.setRecursive(recursive);
-		searchOptions.setZ7(z7);
-		searchOptions.setZipjar(zipjar);
-		searchOptions.setIgnorePaths(exclusions);
-		searchOptions.setSearchAnsi(isAnsi);
-		searchOptions.setSearchUtf8(isUtf8);
-		searchOptions.setSearchUtf16(isUtf16);
+
 		
 		
 		filesTableModel.clearFiles();

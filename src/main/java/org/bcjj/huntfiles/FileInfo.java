@@ -1,8 +1,10 @@
 package org.bcjj.huntfiles;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
@@ -16,6 +18,7 @@ import java.util.zip.ZipFile;
 import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
 import org.apache.commons.compress.archivers.sevenz.SevenZFile;
 import org.apache.commons.lang3.StringUtils;
+import org.bcjj.huntfiles.CloseableInputStream.PreCloseableInputStream;
 import org.bcjj.huntfiles.HuntFiles.SearchResult;
 import org.bcjj.huntfiles.util.SevenZInputStream;
 
@@ -114,16 +117,27 @@ public class FileInfo {
 		return searchResult.getHits();
 	}
 
-	public InputStream getInputStream() throws Exception {
+
+	
+	
+	//Este metodo retorna el inputStream y por tanto no puede cerrarlo
+	@java.lang.SuppressWarnings("java:S2095")  //resources should be closed
+	/**
+	 * Para obtener el inputStream hay que crear primero un new CloseableInputStream desde el PreCloseableInputStream retornado por esta funcion.
+	 * De esta manera queda claro que se debe hacer el close del flujo retornado.
+	 * @return
+	 * @throws Exception
+	 */
+	public PreCloseableInputStream getPreCloseableInputStream() throws Exception {
 		if (fileType==FileType.File) {
 			FileInputStream fileInputStream=new FileInputStream(file);
-			return fileInputStream;
+			return new PreCloseableInputStream(fileInputStream);
 		} 
 		if (fileType==FileType.Zip) {
 			ZipFile zipFile=new ZipFile(file);
 			ZipEntry zipEntry=zipFile.getEntry(pathInPackage);
 			InputStream is=zipFile.getInputStream(zipEntry);
-			return is;
+			return new PreCloseableInputStream(is);
 		}
 		if (fileType==FileType.Z7) {
 			SevenZFile sevenZFile = new SevenZFile(file);
@@ -142,7 +156,7 @@ public class FileInfo {
 			while ((sevenZArchiveEntry =sevenZFile.getNextEntry())!=null) {
 				if (sevenZArchiveEntry.getName().equals(pathInPackage)) {
 					InputStream is=new SevenZInputStream(sevenZArchiveEntry,sevenZFile);
-					return is;
+					return new PreCloseableInputStream(is);
 				}
 			}
 		}
@@ -152,7 +166,7 @@ public class FileInfo {
 			for (FileHeader fileHeader:fileHeaders) {
 				String path=fileHeader.getFileNameString();
 				if (path.equals(pathInPackage)) {
-					return rarFile.getInputStream(fileHeader);
+					return new PreCloseableInputStream(rarFile.getInputStream(fileHeader));
 				}
 			}
 		}

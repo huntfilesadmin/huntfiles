@@ -7,6 +7,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -22,7 +23,10 @@ public class SearchOptions {
 	/*only set through set methods not directly into fields*/
 	private String dir=null;
 	private String filename=null;
-	private String text=null;
+	private String standardText=null;
+	private String originalText=null;
+	private Pattern regPattern=null;
+	private boolean regex=false;
 	private boolean recursive=true;
 	private Long after=null;
 	private Long before=null;
@@ -40,8 +44,6 @@ public class SearchOptions {
 	private boolean searchAnsi=false;
 	private boolean searchUtf8=false;
 	private boolean searchUtf16=false;
-	
-	
 	
 
 
@@ -75,6 +77,10 @@ public class SearchOptions {
         textOpt.setRequired(false);
         options.addOption(textOpt);
 
+        Option regexpOpt = new Option("reg", "reg", false, "search text is a regular expression");
+        regexpOpt.setRequired(false);
+        options.addOption(regexpOpt);        
+        
         Option recOpt = new Option("r", "recursive", false, "recursive search (default), search in sub-directories");
         recOpt.setRequired(false);
         options.addOption(recOpt);
@@ -156,7 +162,13 @@ public class SearchOptions {
         
         setDir(cmd.getOptionValue(dirOpt.getLongOpt()));
         setFilename(cmd.getOptionValue(filenameOpt.getLongOpt(),""));
+        
         setText(cmd.getOptionValue(textOpt.getLongOpt(),""));
+        
+        if (cmd.hasOption(regexpOpt.getLongOpt())) {
+        	setIsRegExp(true);
+        }
+        
         setRecursive(true);
         if (cmd.hasOption(norecOpt.getLongOpt())) {
         	setRecursive(false);
@@ -221,7 +233,7 @@ public class SearchOptions {
 	}
 
 	private String getStr(String str) {
-		if (str==null || str.trim().equals("")) {
+		if (StringUtils.isBlank(str)) {
 			return null;
 		}
 		return str.trim();
@@ -276,6 +288,38 @@ public class SearchOptions {
 		return size;
 	}
 	
+	public String getOriginalText() {
+		return originalText;
+	}
+	
+	public String getStandardText() {
+		return standardText;
+	}
+
+	public void setText(String text) {
+		this.standardText = HuntFiles.getStandardText(getStr(text));
+		this.originalText=text;
+		regPattern=null;
+	}
+
+	public void setIsRegExp(boolean regexp) {
+		regex=regexp;
+		regPattern=null;
+	}
+	
+	
+	Pattern getRegex() {
+		if (!regex) {
+			return null;
+		}
+		if (regPattern==null) {
+			regPattern=Pattern.compile(originalText);
+		}
+		return regPattern;
+	}	
+	
+	
+	
 	public String getDir() {
 		return dir;
 	}
@@ -294,14 +338,8 @@ public class SearchOptions {
 
 
 
-	public String getText() {
-		return text;
-	}
-
-	public void setText(String text) {
-		this.text = getStr(text);
-	}
-
+	
+	
 	public boolean isRecursive() {
 		return recursive;
 	}
@@ -427,6 +465,7 @@ public class SearchOptions {
 		}
 		this.ignorePaths = ignores;
 	}
-	
+
+
 	
 }

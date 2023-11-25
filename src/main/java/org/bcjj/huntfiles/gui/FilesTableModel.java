@@ -1,9 +1,8 @@
 package org.bcjj.huntfiles.gui;
 
 import java.io.File;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Vector;
 
 import javax.swing.JTable;
@@ -27,16 +26,16 @@ public class FilesTableModel extends AbstractTableModel {
 	
 	private String[] columnNames={NAME,PATH,INTERNALPATH,SIZE,DATE,HITS};
 	
-	Vector<FileInfo> fileInfos=new Vector<FileInfo>();
+	List<FileInfo> fileInfos=new Vector<>();
 	JTable tabla;
 	
 	public FilesTableModel(JTable tabla) {
-		this.fileInfos=new Vector<FileInfo>();
+		this.fileInfos=new Vector<>();
 		this.tabla=tabla;
 	}
 	
 	public void setFiles(List<FileInfo> files) {
-		this.fileInfos=new Vector<FileInfo>(files);
+		this.fileInfos=new Vector<>(files);
 	}
 	
 	public void addFileInfo(FileInfo f) {
@@ -62,22 +61,22 @@ public class FilesTableModel extends AbstractTableModel {
 		FileInfo fi=fileInfos.get(rowIndex);
 		File f=fi.getFile();
 		String columna=getColumnName(columnIndex);
-		if (columna==NAME) {
+		if (Objects.equals(columna, NAME)) {
 			return fi.getName();
 		}
-		if (columna==PATH) {
+		if (Objects.equals(columna, PATH)) {
 			return f.getPath();
 		}
-		if (columna==INTERNALPATH) {
+		if (Objects.equals(columna, INTERNALPATH)) {
 			return fi.getPathInPackage();
 		}
-		if (columna==SIZE) {
+		if (Objects.equals(columna, SIZE)) {
 			return fi.getSize();
 		}
-		if (columna==DATE) {
+		if (Objects.equals(columna, DATE)) {
 			return fi.getFechMod();
 		}
-		if (columna==HITS) {
+		if (Objects.equals(columna, HITS)) {
 			if (fi.getHits()==null) {
 				return 0;
 			}
@@ -100,7 +99,7 @@ public class FilesTableModel extends AbstractTableModel {
 	}
 	
 	public FileInfo getFileInfo(int row) {
-		return fileInfos.elementAt(row);
+		return fileInfos.get(row);
 	}
 	
 }

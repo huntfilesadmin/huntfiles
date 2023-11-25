@@ -3,6 +3,8 @@ package org.bcjj.huntfiles;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import junit.framework.Test;
@@ -15,14 +17,16 @@ import junit.framework.TestSuite;
 public class HuntFilesTest  extends TestCase
 {
 	
-	private String dirResources="E:\\proyectos\\huntfiles\\src\\test\\resources";
+	private String dirResources="C:\\proyectos\\huntfiles\\src\\test\\resources";
 	
     public HuntFilesTest( String testName )  {
         super( testName );
     }
 
+    @Override
 	protected void setUp() {
-	}
+      // nada de momento
+    }
     
     
     public static Test suite()  {
@@ -45,10 +49,47 @@ public class HuntFilesTest  extends TestCase
     	HuntFiles huntFiles=new HuntFiles(searchOptions, listener);
     	huntFiles.search();
     	listener.files.forEach(f -> System.out.println("testHuntFilesContraste:"+f.getName()));
-    	assertEquals("Esperaba solo 1 fichero con 'contraste'",1, listener.files.size());
-    	assertEquals("Esperaba solo 1 fichero con 'contraste'","contraste.txt", listener.files.get(0).getName());
+    	assertEquals("Esperaba solo 3 ficheros con 'contraste'",3, listener.files.size());
+    	
+    	List<String> nombres=listener.files.stream().map(FileInfo::getName).collect(Collectors.toList());
+    	
+    	assertTrue("Esperaba contraste.txt",nombres.contains("contraste.txt"));
+    	assertTrue("Esperaba contraste.txt : (resources.zip)",nombres.contains("contraste.txt : (resources.zip)"));
+    	assertTrue("Esperaba contraste.txt : (resources.7z)",nombres.contains("contraste.txt : (resources.7z)"));
     	assertEquals("no esperaba errores",0, listener.errores.size());
     }
+    
+    public void testHuntFilesContrasteRegexp() throws Exception {
+    	
+    	Pattern p=Pattern.compile(".*con.*te.*");
+    	Matcher m=p.matcher("este es para contraste negativo.");
+    	System.out.println("m:"+m.matches());
+    	
+    	
+    	
+    	SearchOptions searchOptions=new SearchOptions(dirResources);
+    	searchOptions.setText(".*con.*te.*");
+    	searchOptions.setIsRegExp(true);
+    	searchOptions.setFilename("contraste.txt");
+    	searchOptions.setZipjar(true);
+    	searchOptions.setZ7(true);
+    	searchOptions.setSearchAnsi(true);
+    	searchOptions.setSearchUtf8(true);
+    	searchOptions.setSearchUtf16(true);
+    	
+    	HuntFilesListener4Test listener=new HuntFilesListener4Test();
+    	HuntFiles huntFiles=new HuntFiles(searchOptions, listener);
+    	huntFiles.search();
+    	listener.files.forEach(f -> System.out.println("testHuntFilesContraste:"+f.getName()));
+    	assertEquals("Esperaba solo 3 ficheros con 'contraste'",3, listener.files.size());
+    	
+    	List<String> nombres=listener.files.stream().map(FileInfo::getName).collect(Collectors.toList());
+    	
+    	assertTrue("Esperaba contraste.txt",nombres.contains("contraste.txt"));
+    	assertTrue("Esperaba contraste.txt : (resources.zip)",nombres.contains("contraste.txt : (resources.zip)"));
+    	assertTrue("Esperaba contraste.txt : (resources.7z)",nombres.contains("contraste.txt : (resources.7z)"));
+    	assertEquals("no esperaba errores",0, listener.errores.size());
+    }    
     
 
     public void testHuntFilesNoNo() throws Exception {
@@ -65,7 +106,7 @@ public class HuntFilesTest  extends TestCase
     	searchOptions.setSearchUtf8(true);
     	searchOptions.setSearchUtf16(true);
     	
-    	System.out.println("search form '"+searchOptions.getText()+"'  in "+dirResources+" ...");
+    	System.out.println("search form '"+searchOptions.getOriginalText()+"'  in "+dirResources+" ...");
     	
     	HuntFilesListener4Test listener=new HuntFilesListener4Test();
     	HuntFiles huntFiles=new HuntFiles(searchOptions, listener);
@@ -74,9 +115,7 @@ public class HuntFilesTest  extends TestCase
     	assertEquals("no esperaba errores",0, listener.errores.size());
     	
 
-    	//listener.files.forEach(f -> System.out.println(f.getName()));
-
-    	List<String> fichEncontrados=listener.files.stream().map(fileInfo -> fileInfo.getName()).collect(Collectors.toList());
+    	List<String> fichEncontrados=listener.files.stream().map(FileInfo::getName).collect(Collectors.toList());
     	
     	List<String> fichEsperados=Arrays.asList("ansi.txt",
     			"uft8.txt",

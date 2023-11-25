@@ -23,6 +23,8 @@ import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
@@ -213,28 +215,16 @@ public class HuntFiles  {
 	}
 
 	private void searchIn7Z(File file) throws Exception {
-		SevenZFile sevenZFile = new SevenZFile(file);
-		/* this way is not working... it doesnt move the sevenZFile.currentEntryIndex
-		Iterator<SevenZArchiveEntry> entries=sevenZFile.getEntries().iterator();
-		while (entries.hasNext()) {
-			if (stop) {
-				return;
+		try (SevenZFile sevenZFile = new SevenZFile(file)) {
+			SevenZArchiveEntry sevenZArchiveEntry=null;
+			while ((sevenZArchiveEntry =sevenZFile.getNextEntry())!=null) {
+				if (stop) {
+					return;
+				}
+				if (!sevenZArchiveEntry.isDirectory()) {
+			    	searchIn7ZEntry(sevenZArchiveEntry,sevenZFile,file);
+			    }
 			}
-			SevenZArchiveEntry sevenZArchiveEntry=entries.next();
-		    if (!sevenZArchiveEntry.isDirectory()) {
-		    	searchIn7ZEntry(sevenZArchiveEntry,sevenZFile,file);
-		    }
-		}
-		*/
-		
-		SevenZArchiveEntry sevenZArchiveEntry=null;
-		while ((sevenZArchiveEntry =sevenZFile.getNextEntry())!=null) {
-			if (stop) {
-				return;
-			}
-			if (!sevenZArchiveEntry.isDirectory()) {
-		    	searchIn7ZEntry(sevenZArchiveEntry,sevenZFile,file);
-		    }
 		}
 	}
 	
@@ -244,33 +234,35 @@ public class HuntFiles  {
 
 
 	private void searchInZip(File file) throws Exception {
-		ZipFile zipFile=new ZipFile(file);
-		Enumeration<? extends ZipEntry> entries = zipFile.entries();
-		//Hashtable<String, Long> h=new Hashtable<String, Long>();
-		while (entries.hasMoreElements()) {
-			if (stop) {
-				return;
+		try (ZipFile zipFile=new ZipFile(file)) {
+			Enumeration<? extends ZipEntry> entries = zipFile.entries();
+			//Hashtable<String, Long> h=new Hashtable<String, Long>();
+			while (entries.hasMoreElements()) {
+				if (stop) {
+					return;
+				}
+			    ZipEntry zipEntry = entries.nextElement();
+			    if (!zipEntry.isDirectory()) {
+			    	searchInZipEntry(zipEntry,zipFile,file);
+			    }
 			}
-		    ZipEntry zipEntry = entries.nextElement();
-		    if (!zipEntry.isDirectory()) {
-		    	searchInZipEntry(zipEntry,zipFile,file);
-		    }
 		}
 	}
 	
 	
 	private void searchInRar(File file) throws Exception {
-		Archive rarFile=new Archive(file);
-		List<FileHeader> fileHeaders = rarFile.getFileHeaders();
-		//Hashtable<String, Long> h=new Hashtable<String, Long>();
-		for (FileHeader fileHeader:fileHeaders) {
-			if (stop) {
-				return;
+		try (Archive rarFile=new Archive(file)) {
+			List<FileHeader> fileHeaders = rarFile.getFileHeaders();
+			//Hashtable<String, Long> h=new Hashtable<String, Long>();
+			for (FileHeader fileHeader:fileHeaders) {
+				if (stop) {
+					return;
+				}
+			    
+			    if (!fileHeader.isDirectory()) {
+			    	searchInRarEntry(fileHeader,rarFile,file);
+			    }
 			}
-		    
-		    if (!fileHeader.isDirectory()) {
-		    	searchInRarEntry(fileHeader,rarFile,file);
-		    }
 		}
 	}	
 	
@@ -321,9 +313,9 @@ public class HuntFiles  {
 		}
 		
 		SearchResult hits=null;
-		if (searchOptions.getText()!=null) {
+		if (searchOptions.getStandardText()!=null) {
 			try (InputStream is=  rarFile.getInputStream(fileHeader)) {
-				hits=searchText(is,searchOptions.getText(),file.getAbsolutePath()+"|"+path,searchOptions);
+				hits=searchText(is,searchOptions.getStandardText(),file.getAbsolutePath()+"|"+path,searchOptions);
 				if (hits.size()==0) {
 					return;
 				}
@@ -334,7 +326,6 @@ public class HuntFiles  {
 		
 		FileInfo fileInfo=new FileInfo(file, path, fileHeader.getUnpSize(), fileHeader.getMTime().getTime() ,hits, FileType.Rar,searchOptions);
 		listener.addFile(fileInfo);
-		return;
 	}
 
 
@@ -398,9 +389,9 @@ public class HuntFiles  {
 		}
 		
 		SearchResult hits=null;
-		if (searchOptions.getText()!=null) {
+		if (searchOptions.getStandardText()!=null) {
 			try (InputStream is=zipFile.getInputStream(zipEntry)) {
-				hits=searchText(is,searchOptions.getText(),file.getAbsolutePath()+"|"+path,searchOptions);
+				hits=searchText(is,searchOptions.getStandardText(),file.getAbsolutePath()+"|"+path,searchOptions);
 				if (hits.size()==0) {
 					return;
 				}
@@ -461,9 +452,9 @@ public class HuntFiles  {
 		}
 		
 		SearchResult hits=null;
-		if (searchOptions.getText()!=null) {
+		if (searchOptions.getStandardText()!=null) {
 			try (InputStream is=new SevenZInputStream(sevenZArchiveEntry,sevenZFile)) {
-				hits=searchText(is,searchOptions.getText(),file.getAbsolutePath()+"|"+path,searchOptions);
+				hits=searchText(is,searchOptions.getStandardText(),file.getAbsolutePath()+"|"+path,searchOptions);
 				if (hits.size()==0) {
 					return;
 				}
@@ -531,12 +522,12 @@ public class HuntFiles  {
 		}
 		
 		SearchResult hits=null;
-		if (searchOptions.getText()!=null) {
+		if (searchOptions.getStandardText()!=null) {
 			if (ext.equalsIgnoreCase("zip") || ext.equalsIgnoreCase("jar") || ext.equalsIgnoreCase("war") || ext.equalsIgnoreCase("7z") || ext.equalsIgnoreCase("rar")) {
 				return;
 			}
 			try (InputStream is=new FileInputStream(file)) {
-				hits=searchText(is,searchOptions.getText(),file.getAbsolutePath(),searchOptions);
+				hits=searchText(is,searchOptions.getStandardText(),file.getAbsolutePath(),searchOptions);
 				if (hits.size()==0) {
 					return;
 				}
@@ -591,7 +582,24 @@ public class HuntFiles  {
 		}
 	}
 	
-	private SearchResult searchText(InputStream is, String text, String filePath,SearchOptions searchOptions) throws Exception {
+	public static String getStandardText(String text) {
+		if (text==null) {
+			return null;
+		}
+		text=text.trim();
+		text=text.toLowerCase();
+		//text=StringUtils.stripAccents(text); //tambien cambia las ׁ
+		text=StringUtils.replaceChars(text, "ביםףתאטלעשהכןצü\t", "aeiouaeiouaeiou ");
+		text=text.replaceAll("\\s+"," ");
+		return text;
+	}
+	
+
+	
+	
+
+
+	private SearchResult searchText(InputStream is, String standardText, String filePath,SearchOptions searchOptions) throws Exception {
 		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 		int nRead;
 		byte[] data = new byte[16384];
@@ -602,28 +610,35 @@ public class HuntFiles  {
 		
 		Set<Hit> hitSet=Collections.synchronizedSet(new HashSet<>());
 		
-		text=text.toLowerCase();
-		text=StringUtils.stripAccents(text);
+		String stdTexto=null;
+		Pattern regPattern=null;
+		if (searchOptions.getRegex()!=null) {
+			regPattern=searchOptions.getRegex();
+		} else {
+			stdTexto=standardText;
+		}
+		
+		
 
 		List<Buscador> buscadores=new ArrayList<>();
 		
 		if (searchOptions.isSearchAnsi()) {
-			buscadores.add(new Buscador(contenido,text,hitSet,filePath,true, StandardCharsets.ISO_8859_1));
+			buscadores.add(new Buscador(contenido,stdTexto,regPattern,hitSet,filePath,true, StandardCharsets.ISO_8859_1));
 		}
 		if (searchOptions.isSearchUtf8()) {
-			buscadores.add(new Buscador(contenido,text,hitSet,filePath,true, StandardCharsets.UTF_8));
+			buscadores.add(new Buscador(contenido,stdTexto,regPattern,hitSet,filePath,true, StandardCharsets.UTF_8));
 		}
 		if (searchOptions.isSearchUtf16()) {
-			buscadores.add(new Buscador(contenido,text,hitSet,filePath,true, StandardCharsets.UTF_16));
-			buscadores.add(new Buscador(contenido,text,hitSet,filePath,true, StandardCharsets.UTF_16BE));
-			buscadores.add(new Buscador(contenido,text,hitSet,filePath,true, StandardCharsets.UTF_16LE));
+			buscadores.add(new Buscador(contenido,stdTexto,regPattern,hitSet,filePath,true, StandardCharsets.UTF_16));
+			buscadores.add(new Buscador(contenido,stdTexto,regPattern,hitSet,filePath,true, StandardCharsets.UTF_16BE));
+			buscadores.add(new Buscador(contenido,stdTexto,regPattern,hitSet,filePath,true, StandardCharsets.UTF_16LE));
 		}
 		
 		for(Buscador buscador:buscadores) {
 			buscador.join();
 		}
 		
-		List<Hit> hits=hitSet.stream().sorted(Comparator.comparing(Hit::getLine)).collect(Collectors.toList());		
+		List<Hit> hits=hitSet.stream().sorted(Comparator.comparing(Hit::getLineNumber)).collect(Collectors.toList());		
 		
 		Charset preferredCharset=null;
 		int maxContador=0;
@@ -641,16 +656,18 @@ public class HuntFiles  {
 	private static class Buscador extends Thread {
 		
 		byte[] contenido;
-		String text;
+		String standardText;
+		Pattern regPattern;
 		Set<Hit> hitSet;
 		String filePath;
 		Charset charset;
-		int encuentros=0;
+		AtomicInteger encuentros=new AtomicInteger();
 
-		public Buscador(byte[] contenido, String text, Set<Hit> hitSet, String filePath, boolean autoStart, Charset charset) throws InterruptedException {
+		public Buscador(byte[] contenido, String standardText, Pattern regPattern, Set<Hit> hitSet, String filePath, boolean autoStart, Charset charset) throws InterruptedException {
 			super();
 			this.contenido = contenido;
-			this.text = text;
+			this.standardText = standardText;
+			this.regPattern=regPattern;
 			this.hitSet = hitSet;
 			this.filePath = filePath;
 			this.charset = charset;
@@ -667,28 +684,37 @@ public class HuntFiles  {
 
 		@Override
 		public void run() {
-			searchText(contenido, text, hitSet, filePath, charset);
+			searchText(contenido, standardText, regPattern, hitSet, filePath, charset, encuentros);
 		}
 		
 
 		public int getEncuentros() {
-			return encuentros;
+			return encuentros.get();
 		}
 		
-		private void searchText(byte[] contenido, String text, Set<Hit> hitSet, String filePath, Charset charset) {
+		private static void searchText(byte[] contenido, String text, Pattern regPattern, Set<Hit> hitSet, String filePath, Charset charset,AtomicInteger encuentros) {
 			String lineOrig="";
-			String line="";
 			int lineNum=0;
 			ByteArrayInputStream bais=new ByteArrayInputStream(contenido);
 			BufferedReader bufferedReader=new BufferedReader(new InputStreamReader(bais,charset));
 			try {
 				while ((lineOrig=bufferedReader.readLine())!=null) {
 					lineNum++;
-					line=lineOrig.toLowerCase();
-					line=StringUtils.stripAccents(line);
-					if (line.indexOf(text)>-1) {
+					boolean encontrado=false;
+					String line=getStandardText(lineOrig);
+					if (text!=null) {
+						if (line.indexOf(text)>-1) {
+							encontrado=true;
+						}
+					}
+					if (!encontrado && regPattern!=null) {
+						if (regPattern.matcher(line).matches()) {
+							encontrado=true;
+						}						
+					}
+					if (encontrado) {
 						Hit hit=new Hit(lineNum, lineOrig);
-						encuentros++;
+						encuentros.incrementAndGet();
 						if (!hitSet.contains(hit)) {
 							hitSet.add(hit);
 						}
@@ -696,7 +722,7 @@ public class HuntFiles  {
 				}		
 			} catch (Exception r) {
 				System.out.println("Error leyendo "+filePath+" :: "+r);
-				encuentros=-1;
+				encuentros.set(-1);
 			}
 		}		
 		
