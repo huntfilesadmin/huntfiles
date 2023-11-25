@@ -4,7 +4,7 @@
   <groupId>org.bcjj.huntfiles</groupId>
   <artifactId>huntfiles</artifactId>
   <packaging>jar</packaging>
-  <version>0.2</version>
+  <version>0.3</version>
   <name>huntfiles</name>
   <url>http://maven.apache.org</url>
 
